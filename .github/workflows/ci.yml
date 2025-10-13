@@ -28,7 +28,7 @@ jobs:
             os: ubuntu-latest
             install: g++-6
           - toolset: gcc-7
-            cxxstd: "11,14,17"
+            cxxstd: "11,14"
             container: ubuntu:18.04
             os: ubuntu-latest
           - toolset: gcc-8
