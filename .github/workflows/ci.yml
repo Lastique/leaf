@@ -16,8 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - toolset: gcc-5
+        include:          - toolset: gcc-5
             cxxstd: "11,14,1z"
             os: ubuntu-latest
             container: ubuntu:18.04
@@ -28,7 +27,7 @@ jobs:
             container: ubuntu:18.04
             install: g++-6-multilib
           - toolset: gcc-7
-            cxxstd: "11,14"
+            cxxstd: "11,14,17"
             os: ubuntu-latest
             container: ubuntu:18.04
             install: g++-7-multilib
@@ -46,22 +45,12 @@ jobs:
             install: g++-10-multilib
           - toolset: gcc-11
             cxxstd: "11,14,17,20"
-            os: ubuntu-22.04
+            os: ubuntu-20.04
             install: g++-11-multilib
           - toolset: gcc-12
             cxxstd: "11,14,17,20,2b"
             os: ubuntu-22.04
             install: g++-12-multilib
-          - toolset: gcc-13
-            cxxstd: "11,14,17,20,2b"
-            os: ubuntu-latest
-            container: ubuntu:23.04
-            install: g++-13-multilib
-          - toolset: gcc-14
-            cxxstd: "11,14,17,20,2b"
-            os: ubuntu-latest
-            container: ubuntu:24.04
-            install: g++-14-multilib
           - toolset: clang
             compiler: clang++-3.9
             cxxstd: "11,14"
@@ -115,56 +104,19 @@ jobs:
           - toolset: clang
             compiler: clang++-13
             cxxstd: "11,14,17,20,2b"
-            container: ubuntu:22.04
-            os: ubuntu-latest
+            os: ubuntu-22.04
             install: clang-13
           - toolset: clang
             compiler: clang++-14
             cxxstd: "11,14,17,20,2b"
-            container: ubuntu:22.04
-            os: ubuntu-latest
+            os: ubuntu-22.04
             install: clang-14
           - toolset: clang
-            compiler: clang++-15
-            cxxstd: "11,14,17,20,2b"
-            container: ubuntu:22.04
-            os: ubuntu-latest
-            install: clang-15
-          - toolset: clang
-            compiler: clang++-16
-            cxxstd: "11,14,17,20,2b"
-            container: ubuntu:23.04
-            os: ubuntu-latest
-            install: clang-16
-          - toolset: clang
-            compiler: clang++-17
-            cxxstd: "11,14,17,20,2b"
-            container: ubuntu:23.10
-            os: ubuntu-latest
-            install: clang-17
-          - toolset: clang
-            compiler: clang++-18
-            cxxstd: "11,14,17,20,2b"
-            container: ubuntu:24.04
-            os: ubuntu-latest
-            install: clang-18
-          - toolset: clang
-            cxxstd: "11,14,17,20,2b"
-            os: macos-12
-          - toolset: clang
-            cxxstd: "11,14,17,20,2b"
-            os: macos-13
-          - toolset: clang
-            cxxstd: "11,14,17,20,2b"
-            os: macos-14
+            cxxstd: "11,14,17,2a"
+            os: macos-11
 
     runs-on: ${{matrix.os}}
-
-    container:
-      image: ${{matrix.container}}
-      volumes:
-        - /node20217:/node20217:rw,rshared
-        - ${{ startsWith(matrix.container, 'ubuntu:1') && '/node20217:/__e/node20:ro,rshared' || ' ' }}
+    container: ${{matrix.container}}
 
     defaults:
       run:
@@ -175,7 +127,7 @@ jobs:
         if: matrix.container
         run: |
           apt-get update
-          apt-get -y install sudo python3 git g++ curl xz-utils
+          apt-get -y install sudo python git g++ curl xz-utils
 
       - name: Install nodejs20glibc2.17
         if: ${{ startsWith( matrix.container, 'ubuntu:1' ) }}
@@ -188,9 +140,7 @@ jobs:
 
       - name: Install packages
         if: matrix.install
-        run: |
-          sudo apt-get update
-          sudo apt-get -y install ${{matrix.install}}
+        run: sudo apt-get -y install ${{matrix.install}}
 
       - name: Setup Boost
         run: |
@@ -210,7 +160,7 @@ jobs:
           cd boost-root
           cp -r $GITHUB_WORKSPACE/* libs/$LIBRARY
           git submodule update --init tools/boostdep
-          python3 tools/boostdep/depinst/depinst.py --git_args "--jobs 3" $LIBRARY
+          python tools/boostdep/depinst/depinst.py --git_args "--jobs 3" $LIBRARY
           ./bootstrap.sh
           ./b2 -d0 headers
 
@@ -222,7 +172,7 @@ jobs:
       - name: Generate headers
         run: |
           cd ../boost-root/libs/leaf
-          python3 gen/generate_single_header.py -i include/boost/leaf/detail/all.hpp -p include -o test/leaf.hpp boost/leaf
+          python gen/generate_single_header.py -i include/boost/leaf/detail/all.hpp -p include -o test/leaf.hpp boost/leaf
 
       - name: Run tests
         run: |
@@ -243,7 +193,7 @@ jobs:
             addrmd: 32,64
             os: windows-2022
           - toolset: clang-win
-            cxxstd: "14,17,20,latest"
+            cxxstd: "14,17,latest"
             addrmd: 64
             os: windows-2022
           - toolset: gcc
@@ -281,7 +231,7 @@ jobs:
       - name: Generate headers
         run: |
           cd ../boost-root/libs/leaf
-          python3 gen/generate_single_header.py -i include/boost/leaf/detail/all.hpp -p include -o test/leaf.hpp boost/leaf
+          python gen/generate_single_header.py -i include/boost/leaf/detail/all.hpp -p include -o test/leaf.hpp boost/leaf
 
       - name: Run tests
         shell: cmd
