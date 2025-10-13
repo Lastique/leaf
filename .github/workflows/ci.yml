@@ -16,7 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:          - toolset: gcc-5
+        include:
+          - toolset: gcc-5
             cxxstd: "11,14,1z"
             os: ubuntu-latest
             container: ubuntu:18.04
