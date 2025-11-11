@@ -25,6 +25,8 @@
 #   include <boost/leaf/config/tls_array.hpp>
 #elif defined(BOOST_LEAF_NO_THREADS)
 #   include <boost/leaf/config/tls_globals.hpp>
+#elif defined(BOOST_LEAF_TLS_WIN32)
+#   include <boost/leaf/config/tls_win32.hpp>
 #else
 #   include <boost/leaf/config/tls_cpp11.hpp>
 #endif

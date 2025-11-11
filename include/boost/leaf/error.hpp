@@ -132,10 +132,10 @@ namespace detail
             BOOST_LEAF_ASSERT(tls::read_ptr<slot<E>>() != this);
         }
 
-        void activate() noexcept
+        void activate()
         {
             prev_ = tls::read_ptr<slot<E>>();
-            tls::write_ptr<slot<E>>(this);
+            tls::alloc_write_ptr<slot<E>>(this);
         }
 
         void deactivate() const noexcept
@@ -529,7 +529,6 @@ namespace detail
 
 namespace detail
 {
-    struct BOOST_LEAF_SYMBOL_VISIBLE tls_tag_id_factory_current_id;
 
     template <class=void>
     struct BOOST_LEAF_SYMBOL_VISIBLE id_factory
@@ -549,7 +548,7 @@ namespace detail
 
     inline int current_id() noexcept
     {
-        unsigned id = tls::read_uint<tls_tag_id_factory_current_id>();
+        unsigned id = tls::read_current_error_id();
         BOOST_LEAF_ASSERT(id == 0 || (id&3) == 1);
         return int(id);
     }
@@ -557,7 +556,7 @@ namespace detail
     inline int new_id() noexcept
     {
         unsigned id = id_factory<>::generate_next_id();
-        tls::write_uint<tls_tag_id_factory_current_id>(id);
+        tls::write_current_error_id(id);
         return int(id);
     }
 

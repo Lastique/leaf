@@ -10,7 +10,6 @@
 #include <boost/leaf/detail/capture_list.hpp>
 #include <boost/leaf/exception.hpp>
 
-#include <climits>
 #include <functional>
 
 namespace boost { namespace leaf {
