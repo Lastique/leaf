@@ -13,7 +13,7 @@ option_exceptions = (get_option('cpp_eh')!='none')
 option_enable_unit_tests = get_option('leaf_enable_unit_tests')
 option_enable_examples = get_option('leaf_enable_examples')
 option_embedded = get_option('leaf_embedded')
-option_tls_win32 = get_option('leaf_tls_win32')
+option_win32 = get_option('leaf_win32')
 
 if target_machine.system() == 'windows'
     add_global_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'cpp')
@@ -90,15 +90,12 @@ endif
 
 defines = [
     '-DBOOST_LEAF_CFG_DIAGNOSTICS=' + option_diagnostics.to_string(),
-    '-DBOOST_LEAF_CFG_CAPTURE=' + option_capture.to_string()
+    '-DBOOST_LEAF_CFG_CAPTURE=' + option_capture.to_string(),
+    '-DBOOST_LEAF_CFG_WIN32=' + option_win32.to_string()
 ]
 
 if option_embedded
     defines += '-DBOOST_LEAF_EMBEDDED'
-endif
-
-if option_tls_win32
-    defines += '-DBOOST_LEAF_TLS_WIN32'
 endif
 
 dep_thread = dependency('threads')

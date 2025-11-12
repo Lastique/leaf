@@ -3,6 +3,6 @@ option('leaf_boost_available',type:'boolean',value:false,description:'Set to tru
 option('leaf_diagnostics',type:'integer',value:1,description:'BOOST_LEAF_CFG_DIAGNOSTICS value')
 option('leaf_capture',type:'integer',value:1,description:'BOOST_LEAF_CFG_CAPTURE value')
 option('leaf_embedded',type:'boolean',value:false,description:'Defines BOOST_LEAF_EMBEDDED')
-option('leaf_tls_win32',type:'boolean',value:false,description:'Defines BOOST_LEAF_TLS_WIN32')
+option('leaf_win32',type:'integer',value:0,description:'Defines BOOST_LEAF_CFG_WIN32 value')
 option('leaf_enable_unit_tests',type:'boolean',value:true,description:'Enable the building of unit test programs')
 option('leaf_enable_examples',type:'boolean',value:true,description:'Enable the building of example programs')

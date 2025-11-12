@@ -14,6 +14,9 @@ int main()
 
 #else
 
+#ifdef BOOST_LEAF_CFG_WIN32
+#   undef BOOST_LEAF_CFG_WIN32
+#endif
 #define BOOST_LEAF_CFG_WIN32 1
 
 #ifdef BOOST_LEAF_TEST_SINGLE_HEADER

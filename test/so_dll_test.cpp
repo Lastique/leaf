@@ -2,6 +2,13 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
+#ifdef _WIN32
+#   ifdef BOOST_LEAF_CFG_WIN32
+#       undef BOOST_LEAF_CFG_WIN32
+#   endif
+#   define BOOST_LEAF_CFG_WIN32 2
+#endif
+
 #ifdef BOOST_LEAF_TEST_SINGLE_HEADER
 #   include "leaf.hpp"
 #else
