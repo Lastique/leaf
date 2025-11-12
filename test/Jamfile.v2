@@ -129,8 +129,8 @@ run try_catch_system_error_test.cpp ;
 run try_catch_test.cpp ;
 run try_exception_and_result_test.cpp ;
 
-lib so_dll_test_lib : so_dll_test_lib.cpp : <visibility>hidden ;
-run so_dll_test.cpp so_dll_test_lib/<link>shared ;
+lib so_dll_lib : so_dll_lib.cpp : <visibility>hidden ;
+run so_dll_test.cpp so_dll_lib/<link>shared ;
 
 compile-fail _compile-fail-arg_boost_error_info_1.cpp ;
 compile-fail _compile-fail-arg_boost_error_info_2.cpp ;
