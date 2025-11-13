@@ -28,7 +28,7 @@ leaf::result<void> BOOST_LEAF_SO_DLL_TEST_API hidden_result()
     return leaf::new_error( my_info<2>{2} );
 }
 
-#ifndef BOOST_NO_EXCEPTIONS
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
 
 void BOOST_LEAF_SO_DLL_TEST_API hidden_throw()
 {
