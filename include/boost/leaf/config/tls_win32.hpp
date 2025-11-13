@@ -12,7 +12,6 @@
 #include <atomic>
 #include <stdexcept>
 #include <cstring>
-#include <string_view>
 #ifdef min
 #   undef min
 #endif
@@ -35,6 +34,43 @@ public:
 namespace detail
 {
     using atomic_unsigned_int = std::atomic<unsigned int>;
+
+    template <int N, int I>
+    struct cpp11_hash_step
+    {
+        BOOST_LEAF_ALWAYS_INLINE constexpr static std::uint32_t compute(char const (&str)[N], std::uint32_t hash) noexcept
+        {
+            return cpp11_hash_step<N, I - 1>::compute(str, (hash ^ static_cast<std::uint32_t>(str[I])) * 16777619u);
+        }
+    };
+
+    template <int N>
+    struct cpp11_hash_step<N, -1>
+    {
+        BOOST_LEAF_ALWAYS_INLINE constexpr static std::uint32_t compute(char const (&)[N], std::uint32_t hash) noexcept
+        {
+            return hash;
+        }
+    };
+
+    template <int N>
+    BOOST_LEAF_ALWAYS_INLINE constexpr std::uint32_t cpp11_hash_string(char const (&str)[N]) noexcept
+    {
+        return cpp11_hash_step<N, N - 2>::compute(str, 2166136261u); // str[N-2] is the last character before the \0.
+    }
+}
+
+namespace n
+{
+    template <class T>
+    BOOST_LEAF_ALWAYS_INLINE constexpr std::uint32_t h() noexcept
+    {
+        return detail::cpp11_hash_string(BOOST_LEAF_PRETTY_FUNCTION);
+    }
+}
+
+namespace detail
+{
 
     class slot_map
     {
@@ -79,25 +115,9 @@ namespace detail
             }
         };
 
-        struct cstring_hash
-        {
-            std::size_t operator()(char const * s) const noexcept
-            {
-                return std::hash<std::string_view>{}(s);
-            }
-        };
-        
-        struct cstring_equal
-        {
-            bool operator()(char const * a, char const * b) const noexcept
-            {
-                return a == b || std::strcmp(a, b) == 0;
-            }
-        };
-
         tls_slot_index const error_id_slot_;
         mutable CRITICAL_SECTION cs_;
-        std::unordered_map<char const *, tls_slot_index, cstring_hash, cstring_equal> map_;
+        std::unordered_map<std::uint32_t, tls_slot_index> map_;
 
     public:
 
@@ -111,19 +131,19 @@ namespace detail
             DeleteCriticalSection(&cs_);
         }
 
-        DWORD check(char const * type_name) const noexcept
+        DWORD check(std::uint32_t type_hash) const noexcept
         {
             EnterCriticalSection(&cs_);
-            auto it = map_.find(type_name);
+            auto it = map_.find(type_hash);
             DWORD idx = (it != map_.end()) ? it->second.get() : TLS_OUT_OF_INDEXES;
             LeaveCriticalSection(&cs_);
             return idx;
         }
 
-        DWORD get(char const * type_name)
+        DWORD get(std::uint32_t type_hash)
         {
             EnterCriticalSection(&cs_);
-            DWORD idx = map_[type_name].get();
+            DWORD idx = map_[type_hash].get();
             LeaveCriticalSection(&cs_);
             BOOST_LEAF_ASSERT(idx != TLS_OUT_OF_INDEXES);
             return idx;
@@ -214,53 +234,45 @@ namespace detail
     PIMAGE_TLS_CALLBACK p_tls_callback __attribute__((section(".CRT$XLB"))) = tls_callback;
 #endif
 
-    inline DWORD check_tls_slot_for_type_name(char const * type_name) noexcept
+    inline DWORD check_tls_slot_for_type_hash(std::uint32_t type_hash) noexcept
     {
-        BOOST_LEAF_ASSERT(type_name && *type_name);
         slot_map const * sm = global_slot_map<>::ptr;
         BOOST_LEAF_ASSERT(sm);
-        DWORD idx = sm->check(type_name);
+        DWORD idx = sm->check(type_hash);
         return idx;
     }
 
-    inline DWORD get_existing_tls_slot_for_type_name(char const * type_name) noexcept
+    inline DWORD get_existing_tls_slot_for_type_hash(std::uint32_t type_hash) noexcept
     {
-        BOOST_LEAF_ASSERT(type_name && *type_name);
         slot_map const * sm = global_slot_map<>::ptr;
         BOOST_LEAF_ASSERT(sm);
-        DWORD idx = sm->check(type_name);
+        DWORD idx = sm->check(type_hash);
         BOOST_LEAF_ASSERT(idx != TLS_OUT_OF_INDEXES);
         return idx;
     }
 
-    inline DWORD get_tls_slot_for_type_name(char const * type_name)
+    inline DWORD get_tls_slot_for_type_hash(std::uint32_t type_hash)
     {
-        BOOST_LEAF_ASSERT(type_name && *type_name);
         slot_map * sm = global_slot_map<>::ptr;
         BOOST_LEAF_ASSERT(sm);
-        DWORD idx = sm->get(type_name);
+        DWORD idx = sm->get(type_hash);
         BOOST_LEAF_ASSERT(idx != TLS_OUT_OF_INDEXES);
         return idx;
     }
-
-    template <class>
-    struct t_
-    {
-    };
 
     template<class T>
     DWORD check_tls_index() noexcept
     {
         thread_local DWORD cached_idx = TLS_OUT_OF_INDEXES;
         if (cached_idx == TLS_OUT_OF_INDEXES)
-            cached_idx = check_tls_slot_for_type_name(typeid(t_<T>).name());
+            cached_idx = check_tls_slot_for_type_hash(n::h<T>());
         return cached_idx;
     }
 
     template<class T>
     DWORD get_existing_tls_index() noexcept
     {
-        thread_local DWORD const cached_idx = get_existing_tls_slot_for_type_name(typeid(t_<T>).name());
+        thread_local DWORD const cached_idx = get_existing_tls_slot_for_type_hash(n::h<T>());
         BOOST_LEAF_ASSERT(cached_idx != TLS_OUT_OF_INDEXES);
         return cached_idx;
     }
@@ -268,7 +280,7 @@ namespace detail
     template<class T>
     DWORD get_tls_index()
     {
-        thread_local DWORD const cached_idx = get_tls_slot_for_type_name(typeid(t_<T>).name());
+        thread_local DWORD const cached_idx = get_tls_slot_for_type_hash(n::h<T>());
         BOOST_LEAF_ASSERT(cached_idx != TLS_OUT_OF_INDEXES);
         return cached_idx;
     }
