@@ -179,9 +179,7 @@ namespace detail
 
         // This must be a literal type, dynamic initialization may break things
         // because the constructor may run after the tls callback is invoked.
-        constexpr module_state() noexcept
-        {
-        }
+        module_state() noexcept = default;
 
         slot_map & sm() const noexcept
         {
@@ -219,11 +217,17 @@ namespace detail
                         BOOST_LEAF_ASSERT(r), (void) r;
                         return;
                     }
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
                     try
                     {
+#endif
                         sm_ = *mapped_ptr = new slot_map;
+#ifdef BOOST_LEAF_NO_EXCEPTIONS
+                        if (!sm_)
+#else
                     }
                     catch(...)
+#endif
                     {
                         tls_failures_ |= tls_failure_slot_map;
                         EXCEPTION_RECORD rec = {};
