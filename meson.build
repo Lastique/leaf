@@ -13,7 +13,6 @@ option_exceptions = (get_option('cpp_eh')!='none')
 option_enable_unit_tests = get_option('leaf_enable_unit_tests')
 option_enable_examples = get_option('leaf_enable_examples')
 option_embedded = get_option('leaf_embedded')
-option_win32 = get_option('leaf_win32')
 
 if target_machine.system() == 'windows'
     add_global_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'cpp')
@@ -90,8 +89,7 @@ endif
 
 defines = [
     '-DBOOST_LEAF_CFG_DIAGNOSTICS=' + option_diagnostics.to_string(),
-    '-DBOOST_LEAF_CFG_CAPTURE=' + option_capture.to_string(),
-    '-DBOOST_LEAF_CFG_WIN32=' + option_win32.to_string()
+    '-DBOOST_LEAF_CFG_CAPTURE=' + option_capture.to_string()
 ]
 
 if option_embedded
@@ -131,7 +129,6 @@ if option_enable_unit_tests
         'diagnostics_test5',
         'diagnostics_test6',
         'e_errno_test',
-        'e_LastError_test',
         'error_code_test',
         'error_id_test',
         'exception_test',
@@ -205,6 +202,11 @@ if option_enable_unit_tests
         test(t, executable(t, 'test/'+t+'.cpp', dependencies: [leaf, dep_thread, dep_boost, dep_test_single_header]) )
     endforeach
 
+    if target_machine.system() == 'windows'
+        dep_e_LastError = declare_dependency(compile_args: ['-DBOOST_LEAF_CFG_WIN32=1'])
+        test('e_LastError_test', executable('e_LastError_test', 'test/e_LastError_test.cpp', dependencies: [leaf, dep_thread, dep_boost, dep_test_single_header, dep_e_LastError]) )
+    endif
+
     header_tests = [
         '_hpp_common_test',
         '_hpp_config_test',
@@ -224,8 +226,12 @@ if option_enable_unit_tests
     endforeach
 
     # Shared library test
-    so_dll_test_lib = shared_library('so_dll_test_lib', 'test/so_dll_lib.cpp', dependencies: [leaf])
-    test('so_dll_test', executable('so_dll_test', 'test/so_dll_test.cpp', dependencies: [leaf], link_with: so_dll_test_lib))
+    dep_so_dll = []
+    if target_machine.system() == 'windows'
+        dep_so_dll = declare_dependency(compile_args: ['-DBOOST_LEAF_CFG_WIN32=2'])
+    endif
+    so_dll_test_lib = shared_library('so_dll_test_lib', 'test/so_dll_lib.cpp', dependencies: [leaf, dep_so_dll])
+    test('so_dll_test', executable('so_dll_test', 'test/so_dll_test.cpp', dependencies: [leaf, dep_so_dll], link_with: so_dll_test_lib))
 
 endif
 

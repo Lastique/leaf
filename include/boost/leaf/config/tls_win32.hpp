@@ -1,6 +1,8 @@
 #ifndef BOOST_LEAF_CONFIG_TLS_WIN32_HPP_INCLUDED
 #define BOOST_LEAF_CONFIG_TLS_WIN32_HPP_INCLUDED
 
+// LATEST
+
 // Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -11,7 +13,7 @@
 #include <cstdint>
 #include <atomic>
 #include <stdexcept>
-#include <cstring>
+#include <cstdio>
 #ifdef min
 #   undef min
 #endif
@@ -71,6 +73,11 @@ namespace n
 
 namespace detail
 {
+    template<class T>
+    constexpr inline std::uint32_t type_hash() noexcept
+    {
+        return n::h<T>();
+    }
 
     class slot_map
     {
@@ -155,135 +162,133 @@ namespace detail
         }
     };
 
-    template<int = 0>
-    struct global_slot_map
+    class module_state
     {
-        static slot_map * ptr;
+        module_state(module_state const &) = delete;
+        module_state & operator=(module_state const &) = delete;
+
+        static constexpr unsigned tls_failure_create_mapping = 0x01;
+        static constexpr unsigned tls_failure_map_view = 0x02;
+        static constexpr unsigned tls_failure_slot_map = 0x04;
+
+        void * hinstance_;
+        unsigned tls_failures_;
+        slot_map * sm_;
+
+    public:
+
+        // This must be a literal type, dynamic initialization may break things
+        // because the constructor may run after the tls callback is invoked.
+        constexpr module_state() noexcept = default;
+
+        slot_map & sm() const noexcept
+        {
+            BOOST_LEAF_ASSERT(hinstance_);
+            BOOST_LEAF_ASSERT(!(tls_failures_ & tls_failure_create_mapping));
+            BOOST_LEAF_ASSERT(!(tls_failures_ & tls_failure_map_view));
+            BOOST_LEAF_ASSERT(!(tls_failures_ & tls_failure_slot_map));
+            BOOST_LEAF_ASSERT(sm_);
+            return *sm_;
+        }
+
+        void update(PVOID hinstDLL, DWORD dwReason) noexcept
+        {
+            static HANDLE mapped = INVALID_HANDLE_VALUE;
+            if (dwReason == DLL_PROCESS_ATTACH)
+            {
+                hinstance_ = hinstDLL;
+                char name[64];
+                int num_written = std::snprintf(name, sizeof(name), "Local\\boost_leaf_tls_%lu", GetCurrentProcessId());
+                BOOST_LEAF_ASSERT(num_written >= 0 && num_written < sizeof(name)), (void) num_written;
+                HANDLE mapping = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(slot_map *), name);
+                if (!mapping)
+                {
+                    tls_failures_ |= tls_failure_create_mapping;
+                    return;
+                }
+                bool is_main_module = (GetLastError() != ERROR_ALREADY_EXISTS);
+                if (is_main_module)
+                {
+                    slot_map * * mapped_ptr = static_cast<slot_map * *>(MapViewOfFile(mapping, FILE_MAP_WRITE, 0, 0, sizeof(slot_map *)));
+                    if (!mapped_ptr)
+                    {
+                        tls_failures_ |= tls_failure_map_view;
+                        BOOL r = CloseHandle(mapping);
+                        BOOST_LEAF_ASSERT(r), (void) r;
+                        return;
+                    }
+                    try
+                    {
+                        sm_ = *mapped_ptr = new slot_map;
+                    }
+                    catch(...)
+                    {
+                        tls_failures_ |= tls_failure_slot_map;
+                        EXCEPTION_RECORD rec = {};
+                        rec.ExceptionCode = STATUS_NO_MEMORY;
+                        rec.ExceptionFlags = EXCEPTION_NONCONTINUABLE;
+                        RaiseFailFastException(&rec, nullptr, 0);
+                    }
+                    mapped = mapping;
+                    UnmapViewOfFile(mapped_ptr);
+                }
+                else
+                {
+                    slot_map * const * mapped_ptr = static_cast<slot_map * const *>(MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, sizeof(slot_map *)));
+                    if (!mapped_ptr)
+                    {
+                        tls_failures_ |= tls_failure_map_view;
+                        BOOL r = CloseHandle(mapping);
+                        BOOST_LEAF_ASSERT(r), (void) r;
+                        return;
+                    }
+                    sm_ = *mapped_ptr;
+                    UnmapViewOfFile(mapped_ptr);
+                    BOOL r = CloseHandle(mapping);
+                    BOOST_LEAF_ASSERT(r), (void) r;
+                }
+            }
+            else if (dwReason == DLL_PROCESS_DETACH)
+            {
+                if (mapped != INVALID_HANDLE_VALUE)
+                {
+                    delete sm_;
+                    BOOL r = CloseHandle(mapped);
+                    BOOST_LEAF_ASSERT(r), (void) r;
+                    sm_ = nullptr;
+                    mapped = INVALID_HANDLE_VALUE;
+                }
+            }
+        }
+    };
+
+    template<int = 0>
+    struct module
+    {
+        static module_state state;
     };
 
     template<int N>
-    slot_map * global_slot_map<N>::ptr = nullptr;
+    module_state module<N>::state;
 
-    inline void NTAPI tls_callback(PVOID, DWORD dwReason, PVOID) noexcept
+    inline void NTAPI tls_callback(PVOID hinstDLL, DWORD dwReason, PVOID) noexcept
     {
-        static HANDLE s_mapping = INVALID_HANDLE_VALUE;
-        if (dwReason == DLL_PROCESS_ATTACH)
-        {
-            char name[64];
-            int num_written = std::snprintf(name, sizeof(name), "Local\\boost_leaf_tls_%lu", GetCurrentProcessId());
-            BOOST_LEAF_ASSERT(num_written >= 0 && num_written < sizeof(name)), (void) num_written;
-            HANDLE mapping = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(slot_map *), name);
-            if (!mapping)
-                return;
-            bool is_main_module = (GetLastError() != ERROR_ALREADY_EXISTS);
-            if (is_main_module)
-            {
-                slot_map * * mapped_ptr = static_cast<slot_map * *>(MapViewOfFile(mapping, FILE_MAP_WRITE, 0, 0, sizeof(slot_map *)));
-                if (!mapped_ptr)
-                {
-                    BOOL r = CloseHandle(mapping);
-                    BOOST_LEAF_ASSERT(r), (void) r;
-                    return;
-                }
-                try
-                {
-                    global_slot_map<>::ptr = *mapped_ptr = new slot_map;
-                }
-                catch(...)
-                {
-                    EXCEPTION_RECORD rec = {};
-                    rec.ExceptionCode = STATUS_NO_MEMORY;
-                    rec.ExceptionFlags = EXCEPTION_NONCONTINUABLE;
-                    RaiseFailFastException(&rec, nullptr, 0);
-                }
-                s_mapping = mapping;
-                UnmapViewOfFile(mapped_ptr);
-            }
-            else
-            {
-                slot_map * const * mapped_ptr = static_cast<slot_map * const *>(MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, sizeof(slot_map *)));
-                if (!mapped_ptr)
-                {
-                    BOOL r = CloseHandle(mapping);
-                    BOOST_LEAF_ASSERT(r), (void) r;
-                    return;
-                }
-                global_slot_map<>::ptr = *mapped_ptr;
-                UnmapViewOfFile(mapped_ptr);
-                BOOL r = CloseHandle(mapping);
-                BOOST_LEAF_ASSERT(r), (void) r;
-            }
-        }
-        else if (dwReason == DLL_PROCESS_DETACH)
-        {
-            if (s_mapping != INVALID_HANDLE_VALUE)
-            {
-                delete global_slot_map<>::ptr;
-                BOOL r = CloseHandle(s_mapping);
-                BOOST_LEAF_ASSERT(r), (void) r;
-                global_slot_map<>::ptr = nullptr;
-                s_mapping = INVALID_HANDLE_VALUE;
-            }
-        }
+        module<>::state.update(hinstDLL, dwReason);
     }
+
 #ifdef _MSC_VER
-#pragma data_seg(".CRT$XLB")
-    PIMAGE_TLS_CALLBACK p_tls_callback = tls_callback;
-#pragma data_seg()
-#elif defined(__GNUC__)
-    PIMAGE_TLS_CALLBACK p_tls_callback __attribute__((section(".CRT$XLB"))) = tls_callback;
+#pragma section(".CRT$XLB", long, read)
+#pragma data_seg(push, ".CRT$XLB")
+    extern "C" PIMAGE_TLS_CALLBACK boost_leaf_tls_callback = tls_callback;
+#pragma data_seg(pop)
+#ifdef _WIN64
+#pragma comment(linker, "/INCLUDE:boost_leaf_tls_callback")
+#else
+#pragma comment(linker, "/INCLUDE:_boost_leaf_tls_callback")
 #endif
-
-    inline DWORD check_tls_slot_for_type_hash(std::uint32_t type_hash) noexcept
-    {
-        slot_map const * sm = global_slot_map<>::ptr;
-        BOOST_LEAF_ASSERT(sm);
-        DWORD idx = sm->check(type_hash);
-        return idx;
-    }
-
-    inline DWORD get_existing_tls_slot_for_type_hash(std::uint32_t type_hash) noexcept
-    {
-        slot_map const * sm = global_slot_map<>::ptr;
-        BOOST_LEAF_ASSERT(sm);
-        DWORD idx = sm->check(type_hash);
-        BOOST_LEAF_ASSERT(idx != TLS_OUT_OF_INDEXES);
-        return idx;
-    }
-
-    inline DWORD get_tls_slot_for_type_hash(std::uint32_t type_hash)
-    {
-        slot_map * sm = global_slot_map<>::ptr;
-        BOOST_LEAF_ASSERT(sm);
-        DWORD idx = sm->get(type_hash);
-        BOOST_LEAF_ASSERT(idx != TLS_OUT_OF_INDEXES);
-        return idx;
-    }
-
-    template<class T>
-    DWORD check_tls_index() noexcept
-    {
-        thread_local DWORD cached_idx = TLS_OUT_OF_INDEXES;
-        if (cached_idx == TLS_OUT_OF_INDEXES)
-            cached_idx = check_tls_slot_for_type_hash(n::h<T>());
-        return cached_idx;
-    }
-
-    template<class T>
-    DWORD get_existing_tls_index() noexcept
-    {
-        thread_local DWORD const cached_idx = get_existing_tls_slot_for_type_hash(n::h<T>());
-        BOOST_LEAF_ASSERT(cached_idx != TLS_OUT_OF_INDEXES);
-        return cached_idx;
-    }
-
-    template<class T>
-    DWORD get_tls_index()
-    {
-        thread_local DWORD const cached_idx = get_tls_slot_for_type_hash(n::h<T>());
-        BOOST_LEAF_ASSERT(cached_idx != TLS_OUT_OF_INDEXES);
-        return cached_idx;
-    }
+#elif defined(__GNUC__)
+    extern "C" __attribute__((used)) PIMAGE_TLS_CALLBACK boost_leaf_tls_callback __attribute__((section(".CRT$XLB"))) = tls_callback;
+#endif
 }
 
 namespace tls
@@ -291,7 +296,11 @@ namespace tls
     template <class T>
     T * read_ptr() noexcept
     {
-        DWORD slot = detail::check_tls_index<T>();
+        using namespace detail;
+        thread_local DWORD cached_slot = TLS_OUT_OF_INDEXES;
+        if (cached_slot == TLS_OUT_OF_INDEXES)
+            cached_slot = module<>::state.sm().check(type_hash<T>());
+        DWORD slot = cached_slot;
         if (slot == TLS_OUT_OF_INDEXES)
             return nullptr;
         LPVOID value = TlsGetValue(slot);
@@ -302,7 +311,9 @@ namespace tls
     template <class T>
     void alloc_write_ptr(T * p)
     {
-        DWORD slot = detail::get_tls_index<T>();
+        using namespace detail;
+        thread_local DWORD const cached_slot = module<>::state.sm().get(type_hash<T>());
+        DWORD slot = cached_slot;
         BOOST_LEAF_ASSERT(slot != TLS_OUT_OF_INDEXES);
         BOOL r = TlsSetValue(slot, p);
         BOOST_LEAF_ASSERT(r), (void) r;
@@ -311,7 +322,9 @@ namespace tls
     template <class T>
     void write_ptr(T * p) noexcept
     {
-        DWORD slot = detail::get_existing_tls_index<T>();
+        using namespace detail;
+        thread_local DWORD const cached_slot = module<>::state.sm().check(type_hash<T>());
+        DWORD slot = cached_slot;
         BOOST_LEAF_ASSERT(slot != TLS_OUT_OF_INDEXES);
         BOOL r = TlsSetValue(slot, p);
         BOOST_LEAF_ASSERT(r), (void) r;
@@ -319,9 +332,8 @@ namespace tls
 
     inline unsigned read_current_error_id() noexcept
     {
-        detail::slot_map const * sm = detail::global_slot_map<>::ptr;
-        BOOST_LEAF_ASSERT(sm);
-        DWORD slot = sm->error_id_slot();
+        using namespace detail;
+        DWORD slot = module<>::state.sm().error_id_slot();
         LPVOID value = TlsGetValue(slot);
         BOOST_LEAF_ASSERT(GetLastError() == ERROR_SUCCESS);
         return static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(value));
@@ -329,9 +341,8 @@ namespace tls
 
     inline void write_current_error_id(unsigned x) noexcept
     {
-        detail::slot_map const * sm = detail::global_slot_map<>::ptr;
-        BOOST_LEAF_ASSERT(sm);
-        DWORD slot = sm->error_id_slot();
+        using namespace detail;
+        DWORD slot = module<>::state.sm().error_id_slot();
         BOOL r = TlsSetValue(slot, reinterpret_cast<void *>(static_cast<std::uintptr_t>(x)));
         BOOST_LEAF_ASSERT(r), (void) r;
     }

@@ -2,16 +2,6 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifdef _WIN32
-#   ifdef BOOST_LEAF_CFG_WIN32
-#       undef BOOST_LEAF_CFG_WIN32
-#   endif
-#   define BOOST_LEAF_CFG_WIN32 2
-#endif
-
-#define BOOST_LEAF_SO_DLL_TEST_BUILDING_LIB
-#include "so_dll_test_lib.hpp"
-
 #ifdef BOOST_LEAF_TEST_SINGLE_HEADER
 #   include "leaf.hpp"
 #else
@@ -19,6 +9,27 @@
 #   include <boost/leaf/result.hpp>
 #   include <boost/leaf/on_error.hpp>
 #endif
+
+#ifdef BOOST_LEAF_NO_EXCEPTIONS
+#include <iostream>
+namespace boost
+{
+    [[noreturn]] void throw_exception( std::exception const & e )
+    {
+        std::cerr << "Terminating due to a C++ exception under BOOST_LEAF_NO_EXCEPTIONS: " << e.what();
+        std::terminate();
+    }
+
+    struct source_location;
+    [[noreturn]] void throw_exception( std::exception const & e, boost::source_location const & )
+    {
+        throw_exception(e);
+    }
+}
+#endif
+
+#define BOOST_LEAF_SO_DLL_TEST_BUILDING_LIB
+#include "so_dll_test_lib.hpp"
 
 namespace leaf = boost::leaf;
 
