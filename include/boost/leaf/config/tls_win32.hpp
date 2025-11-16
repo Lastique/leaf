@@ -128,7 +128,7 @@ namespace detail
 
     public:
 
-        slot_map()
+        slot_map() noexcept
         {
             InitializeCriticalSection(&cs_);
         }
@@ -179,7 +179,9 @@ namespace detail
 
         // This must be a literal type, dynamic initialization may break things
         // because the constructor may run after the tls callback is invoked.
-        constexpr module_state() noexcept = default;
+        constexpr module_state() noexcept
+        {
+        }
 
         slot_map & sm() const noexcept
         {
