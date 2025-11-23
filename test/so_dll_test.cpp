@@ -33,7 +33,7 @@
 
 namespace leaf = boost::leaf;
 
-int test_result(leaf::result<void> (*f)())
+int test_result(leaf::result<void> (*f)(), bool print)
 {
     int r = leaf::try_handle_all(
         [f]() -> leaf::result<int>
@@ -41,13 +41,13 @@ int test_result(leaf::result<void> (*f)())
             BOOST_LEAF_CHECK(f());
             return 0;
         },
-        []( my_info<1> x1, my_info<2> x2, leaf::diagnostic_details const & info, leaf::diagnostic_details const & vinfo )
+        [&]( my_info<1> x1, my_info<2> x2, leaf::diagnostic_details const & info, leaf::diagnostic_details const & vinfo )
         {
             if( x1.value != 1 )
                 return 1;
             if( x2.value != 2 )
                 return 2;
-            if( BOOST_LEAF_CFG_DIAGNOSTICS )
+            if( BOOST_LEAF_CFG_DIAGNOSTICS && print )
             {
 #if BOOST_LEAF_CFG_STD_STRING
                 std::ostringstream ss; ss << vinfo;
@@ -60,10 +60,11 @@ int test_result(leaf::result<void> (*f)())
             }
             return 0;
         },
-        [](leaf::diagnostic_details const & vinfo)
+        [&](leaf::diagnostic_details const & vinfo)
         {
 #if BOOST_LEAF_CFG_STD_STRING
-            std::cout << "Test is failing (catch-all), diagnostics:\n" << vinfo << std::endl;
+            if( print )
+                std::cout << "Test is failing (catch-all), diagnostics:\n" << vinfo << std::endl;
 #endif
             return 4;
         } );
@@ -71,7 +72,7 @@ int test_result(leaf::result<void> (*f)())
 }
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
-int test_exception(void (*f)())
+int test_exception(void (*f)(), bool print)
 {
     int r = leaf::try_catch(
         [f]
@@ -79,15 +80,15 @@ int test_exception(void (*f)())
             f();
             return 0;
         },
-        []( my_info<1> x1, my_info<2> x2, leaf::diagnostic_details const & info, leaf::diagnostic_details const & vinfo )
+        [&]( my_info<1> x1, my_info<2> x2, leaf::diagnostic_details const & info, leaf::diagnostic_details const & vinfo )
         {
             if( x1.value != 1 )
                 return 1;
             if( x2.value != 2 )
                 return 2;
-            if( BOOST_LEAF_CFG_DIAGNOSTICS )
+            if( BOOST_LEAF_CFG_DIAGNOSTICS && print )
             {
-#if 0 && BOOST_LEAF_CFG_STD_STRING
+#if BOOST_LEAF_CFG_STD_STRING
                 std::ostringstream ss; ss << vinfo;
                 std::string s = ss.str();
                 std::cout << s << std::endl;
@@ -98,10 +99,11 @@ int test_exception(void (*f)())
             }
             return 0;
         },
-        [](leaf::diagnostic_details const & vinfo)
+        [&](leaf::diagnostic_details const & vinfo)
         {
-#if 0 && BOOST_LEAF_CFG_STD_STRING
-            std::cout << "Test is failing\n" << vinfo;
+#if BOOST_LEAF_CFG_STD_STRING
+            if( print )
+                std::cout << "Test is failing\n" << vinfo;
 #endif
             return 4;
         } );
@@ -128,13 +130,13 @@ int test_catch(void (*f)())
 
 void test_single_thread()
 {
-    BOOST_TEST_EQ(test_result(hidden_result2), 0);
-    BOOST_TEST_EQ(test_result(hidden_result1), 0);
+    BOOST_TEST_EQ(test_result(hidden_result2, true), 0);
+    BOOST_TEST_EQ(test_result(hidden_result1, true), 0);
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
-    BOOST_TEST_EQ(test_exception(hidden_throw1), 0);
+    BOOST_TEST_EQ(test_exception(hidden_throw1, true), 0);
     BOOST_TEST_EQ(test_catch(hidden_throw1), 0);
-    BOOST_TEST_EQ(test_exception(hidden_throw2), 0);
+    BOOST_TEST_EQ(test_exception(hidden_throw2, true), 0);
     BOOST_TEST_EQ(test_catch(hidden_throw2), 0);
 #endif
 }
@@ -151,8 +153,8 @@ void test_multithreaded()
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [&]{ return ready; });
             lock.unlock();
-            int result1 = test_result(hidden_result1);
-            int result2 = test_result(hidden_result2);
+            int result1 = test_result(hidden_result1, false);
+            int result2 = test_result(hidden_result2, false);
             return result1 + result2;
         };
         std::vector<std::future<int>> futures;
@@ -185,9 +187,9 @@ void test_multithreaded()
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [&]{ return ready; });
             lock.unlock();
-            int result1 = test_exception(hidden_throw1);
+            int result1 = test_exception(hidden_throw1, false);
             int result2 = test_catch(hidden_throw1);
-            int result3 = test_exception(hidden_throw2);
+            int result3 = test_exception(hidden_throw2, false);
             int result4 = test_catch(hidden_throw2);
             return result1 + result2 + result3 + result4;
         };
