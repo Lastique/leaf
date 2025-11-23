@@ -529,23 +529,6 @@ namespace detail
 
 namespace detail
 {
-
-    template <class=void>
-    struct BOOST_LEAF_SYMBOL_VISIBLE id_factory
-    {
-        static atomic_unsigned_int counter;
-
-        BOOST_LEAF_CONSTEXPR static unsigned generate_next_id() noexcept
-        {
-            auto id = (counter+=4);
-            BOOST_LEAF_ASSERT((id&3) == 1);
-            return id;
-        }
-    };
-
-    template <class T>
-    atomic_unsigned_int id_factory<T>::counter(1);
-
     inline int current_id() noexcept
     {
         unsigned id = tls::read_current_error_id();
@@ -555,7 +538,7 @@ namespace detail
 
     inline int new_id() noexcept
     {
-        unsigned id = id_factory<>::generate_next_id();
+        unsigned id = generate_next_error_id();
         tls::write_current_error_id(id);
         return int(id);
     }

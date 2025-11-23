@@ -1,5 +1,5 @@
-#ifndef VISIBILITY_TEST_LIB_HPP_INCLUDED
-#define VISIBILITY_TEST_LIB_HPP_INCLUDED
+#ifndef SO_DLL_TEST_HPP_INCLUDED
+#define SO_DLL_TEST_HPP_INCLUDED
 
 // Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -11,7 +11,7 @@
 #   error This test requires BOOST_LEAF_CFG_WIN32 >= 2
 #endif
 
-#ifdef BOOST_LEAF_SO_DLL_TEST_BUILDING_LIB
+#ifdef BOOST_LEAF_SO_DLL_TEST_BUILDING_EXE
 #   if defined(_WIN32)
 #       define BOOST_LEAF_SO_DLL_TEST_API __declspec(dllexport)
 #   elif defined(__GNUC__)
@@ -40,3 +40,4 @@ struct BOOST_LEAF_SO_DLL_TEST_API my_info
 };
 
 #endif
+

@@ -27,7 +27,6 @@ namespace tls
 ////////////////////////////////////////
 
 #include <limits>
-#include <atomic>
 #include <cstdint>
 #include <type_traits>
 

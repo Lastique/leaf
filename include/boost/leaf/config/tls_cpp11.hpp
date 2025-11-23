@@ -11,7 +11,6 @@
 // values using the C++11 built-in thread_local storage class specifier.
 
 #include <cstdint>
-#include <atomic>
 
 namespace boost { namespace leaf {
 

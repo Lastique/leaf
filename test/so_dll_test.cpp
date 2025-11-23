@@ -2,6 +2,8 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
+#define BOOST_LEAF_SO_DLL_TEST_BUILDING_EXE
+
 #ifdef BOOST_LEAF_TEST_SINGLE_HEADER
 #   include "leaf.hpp"
 #else
@@ -9,7 +11,8 @@
 #   include <boost/leaf/result.hpp>
 #endif
 
-#include "so_dll_test_lib.hpp"
+#include "so_dll_test_lib1.hpp"
+#include "so_dll_test_lib2.hpp"
 
 #if BOOST_LEAF_CFG_STD_STRING
 #   include <sstream>
@@ -30,15 +33,12 @@
 
 namespace leaf = boost::leaf;
 
-leaf::result<void> hidden_result();
-void hidden_throw();
-
-int test_result()
+int test_result(leaf::result<void> (*f)())
 {
     int r = leaf::try_handle_all(
-        []() -> leaf::result<int>
+        [f]() -> leaf::result<int>
         {
-            BOOST_LEAF_CHECK(hidden_result());
+            BOOST_LEAF_CHECK(f());
             return 0;
         },
         []( my_info<1> x1, my_info<2> x2, leaf::diagnostic_details const & info, leaf::diagnostic_details const & vinfo )
@@ -49,10 +49,10 @@ int test_result()
                 return 2;
             if( BOOST_LEAF_CFG_DIAGNOSTICS )
             {
-#if 0 && BOOST_LEAF_CFG_STD_STRING
+#if BOOST_LEAF_CFG_STD_STRING
                 std::ostringstream ss; ss << vinfo;
                 std::string s = ss.str();
-                std::cout << s << std::endl;
+                std::cout << "Handler matched, diagnostics:\n" << s << std::endl;
                 if( BOOST_LEAF_CFG_DIAGNOSTICS && BOOST_LEAF_CFG_CAPTURE )
                     if( s.find("Test my_info<3>::value = 3") == std::string::npos )
                         return 3;
@@ -62,8 +62,8 @@ int test_result()
         },
         [](leaf::diagnostic_details const & vinfo)
         {
-#if 0 && BOOST_LEAF_CFG_STD_STRING
-            std::cout << "Test is failing\n" << vinfo;
+#if BOOST_LEAF_CFG_STD_STRING
+            std::cout << "Test is failing (catch-all), diagnostics:\n" << vinfo << std::endl;
 #endif
             return 4;
         } );
@@ -71,12 +71,12 @@ int test_result()
 }
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
-int test_exception()
+int test_exception(void (*f)())
 {
     int r = leaf::try_catch(
-        []
+        [f]
         {
-            hidden_throw();
+            f();
             return 0;
         },
         []( my_info<1> x1, my_info<2> x2, leaf::diagnostic_details const & info, leaf::diagnostic_details const & vinfo )
@@ -108,11 +108,11 @@ int test_exception()
     return r;
 }
 
-int test_catch()
+int test_catch(void (*f)())
 {
     try
     {
-        hidden_throw();
+        f();
         return 1;
     }
     catch( leaf::error_id const & )
@@ -126,42 +126,22 @@ int test_catch()
 }
 #endif
 
-int main()
+void test_single_thread()
 {
-    constexpr int N = 100;
-    std::srand(std::hash<unsigned>{}(static_cast<unsigned>(std::time(nullptr))));
-    {
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        auto test_function = [&]
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [&]{ return ready; });
-            lock.unlock();
-            return test_result();
-        };
-        std::vector<std::future<int>> futures;
-        for (int i = 0; i < N; ++i)
-            futures.push_back(std::async(std::launch::async, test_function));
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            ready = true;
-        }
-        cv.notify_all();
-        for (auto start = std::chrono::steady_clock::now(); std::chrono::steady_clock::now() - start < std::chrono::seconds(1); )
-            if ((std::rand() % 2) == 0 || futures.empty())
-                futures.push_back(std::async(std::launch::async, test_function));
-            else
-            {
-                BOOST_TEST_EQ(futures.back().get(), 0);
-                futures.pop_back();
-            }
-        for (auto & f : futures)
-            BOOST_TEST_EQ(f.get(), 0);
-    }
+    BOOST_TEST_EQ(test_result(hidden_result2), 0);
+    BOOST_TEST_EQ(test_result(hidden_result1), 0);
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
+    BOOST_TEST_EQ(test_exception(hidden_throw1), 0);
+    BOOST_TEST_EQ(test_catch(hidden_throw1), 0);
+    BOOST_TEST_EQ(test_exception(hidden_throw2), 0);
+    BOOST_TEST_EQ(test_catch(hidden_throw2), 0);
+#endif
+}
+
+void test_multithreaded()
+{
+    constexpr int N = 100;
     {
         std::mutex mtx;
         std::condition_variable cv;
@@ -171,8 +151,8 @@ int main()
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [&]{ return ready; });
             lock.unlock();
-            int result1 = test_exception();
-            int result2 = test_catch();
+            int result1 = test_result(hidden_result1);
+            int result2 = test_result(hidden_result2);
             return result1 + result2;
         };
         std::vector<std::future<int>> futures;
@@ -194,7 +174,51 @@ int main()
         for (auto & f : futures)
             BOOST_TEST_EQ(f.get(), 0);
     }
+
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
+    {
+        std::mutex mtx;
+        std::condition_variable cv;
+        bool ready = false;
+        auto test_function = [&]
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&]{ return ready; });
+            lock.unlock();
+            int result1 = test_exception(hidden_throw1);
+            int result2 = test_catch(hidden_throw1);
+            int result3 = test_exception(hidden_throw2);
+            int result4 = test_catch(hidden_throw2);
+            return result1 + result2 + result3 + result4;
+        };
+        std::vector<std::future<int>> futures;
+        for (int i = 0; i < N; ++i)
+            futures.push_back(std::async(std::launch::async, test_function));
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            ready = true;
+        }
+        cv.notify_all();
+        for (auto start = std::chrono::steady_clock::now(); std::chrono::steady_clock::now() - start < std::chrono::seconds(1); )
+            if ((std::rand() % 2) == 0 || futures.empty())
+                futures.push_back(std::async(std::launch::async, test_function));
+            else
+            {
+                BOOST_TEST_EQ(futures.back().get(), 0);
+                futures.pop_back();
+            }
+        for (auto & f : futures)
+            BOOST_TEST_EQ(f.get(), 0);
+    }
 #endif
+}
+
+int main()
+{
+    std::srand(std::hash<unsigned>{}(static_cast<unsigned>(std::time(nullptr))));
+
+    test_single_thread();
+    test_multithreaded();
 
     return boost::report_errors();
 }

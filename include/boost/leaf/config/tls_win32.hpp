@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <typeinfo>
 #include <cstdint>
-#include <atomic>
 #include <stdexcept>
 #include <cstdio>
 #ifdef min
@@ -84,6 +83,13 @@ namespace detail
         slot_map(slot_map const &) = delete;
         slot_map & operator=(slot_map const &) = delete;
 
+        ~slot_map() noexcept
+        {
+            DeleteCriticalSection(&cs_);
+            BOOL r = CloseHandle(mapping_);
+            BOOST_LEAF_ASSERT(r), (void) r;
+        }
+
         class tls_slot_index
         {
             tls_slot_index(tls_slot_index const &) = delete;
@@ -122,20 +128,36 @@ namespace detail
             }
         };
 
+        int refcount_;
+        HANDLE const mapping_;
         tls_slot_index const error_id_slot_;
         mutable CRITICAL_SECTION cs_;
         std::unordered_map<std::uint32_t, tls_slot_index> map_;
+        atomic_unsigned_int error_id_storage_;
 
     public:
 
-        slot_map() noexcept
+        explicit slot_map(HANDLE mapping) noexcept:
+            refcount_(1),
+            mapping_(mapping),
+            error_id_storage_(1)
         {
+            BOOST_LEAF_ASSERT(mapping != INVALID_HANDLE_VALUE);
             InitializeCriticalSection(&cs_);
         }
 
-        ~slot_map() noexcept
+        void add_ref() noexcept
         {
-            DeleteCriticalSection(&cs_);
+            BOOST_LEAF_ASSERT(refcount_ >= 1);
+            ++refcount_;
+        }
+
+        void release() noexcept
+        {
+            --refcount_;
+            BOOST_LEAF_ASSERT(refcount_ >= 0);
+            if (refcount_ == 0)
+                delete this;
         }
 
         DWORD check(std::uint32_t type_hash) const noexcept
@@ -160,6 +182,11 @@ namespace detail
         {
             return error_id_slot_.get();
         }
+
+        atomic_unsigned_int & error_id_storage() noexcept
+        {
+            return error_id_storage_;
+        }
     };
 
     class module_state
@@ -177,9 +204,12 @@ namespace detail
 
     public:
 
-        // This must be a literal type, dynamic initialization may break things
-        // because the constructor may run after the tls callback is invoked.
-        module_state() noexcept = default;
+        constexpr module_state() noexcept:
+            hinstance_(nullptr),
+            tls_failures_(0),
+            sm_(nullptr)
+        {
+        }
 
         slot_map & sm() const noexcept
         {
@@ -193,7 +223,6 @@ namespace detail
 
         void update(PVOID hinstDLL, DWORD dwReason) noexcept
         {
-            static HANDLE mapped = INVALID_HANDLE_VALUE;
             if (dwReason == DLL_PROCESS_ATTACH)
             {
                 hinstance_ = hinstDLL;
@@ -206,22 +235,22 @@ namespace detail
                     tls_failures_ |= tls_failure_create_mapping;
                     return;
                 }
-                bool is_main_module = (GetLastError() != ERROR_ALREADY_EXISTS);
-                if (is_main_module)
+                bool is_first_module = (GetLastError() != ERROR_ALREADY_EXISTS);
+                slot_map * * mapped_ptr = static_cast<slot_map * *>(MapViewOfFile(mapping, FILE_MAP_WRITE, 0, 0, sizeof(slot_map *)));
+                if (!mapped_ptr)
                 {
-                    slot_map * * mapped_ptr = static_cast<slot_map * *>(MapViewOfFile(mapping, FILE_MAP_WRITE, 0, 0, sizeof(slot_map *)));
-                    if (!mapped_ptr)
-                    {
-                        tls_failures_ |= tls_failure_map_view;
-                        BOOL r = CloseHandle(mapping);
-                        BOOST_LEAF_ASSERT(r), (void) r;
-                        return;
-                    }
+                    tls_failures_ |= tls_failure_map_view;
+                    BOOL r = CloseHandle(mapping);
+                    BOOST_LEAF_ASSERT(r), (void) r;
+                    return;
+                }
+                if (is_first_module)
+                {
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
                     try
                     {
 #endif
-                        sm_ = *mapped_ptr = new slot_map;
+                        sm_ = *mapped_ptr = new slot_map(mapping);
 #ifdef BOOST_LEAF_NO_EXCEPTIONS
                         if (!sm_)
 #else
@@ -235,34 +264,22 @@ namespace detail
                         rec.ExceptionFlags = EXCEPTION_NONCONTINUABLE;
                         RaiseFailFastException(&rec, nullptr, 0);
                     }
-                    mapped = mapping;
-                    UnmapViewOfFile(mapped_ptr);
                 }
                 else
                 {
-                    slot_map * const * mapped_ptr = static_cast<slot_map * const *>(MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, sizeof(slot_map *)));
-                    if (!mapped_ptr)
-                    {
-                        tls_failures_ |= tls_failure_map_view;
-                        BOOL r = CloseHandle(mapping);
-                        BOOST_LEAF_ASSERT(r), (void) r;
-                        return;
-                    }
                     sm_ = *mapped_ptr;
-                    UnmapViewOfFile(mapped_ptr);
+                    sm_->add_ref();
                     BOOL r = CloseHandle(mapping);
                     BOOST_LEAF_ASSERT(r), (void) r;
                 }
+                UnmapViewOfFile(mapped_ptr);
             }
             else if (dwReason == DLL_PROCESS_DETACH)
             {
-                if (mapped != INVALID_HANDLE_VALUE)
+                if (sm_)
                 {
-                    delete sm_;
-                    BOOL r = CloseHandle(mapped);
-                    BOOST_LEAF_ASSERT(r), (void) r;
+                    sm_->release();
                     sm_ = nullptr;
-                    mapped = INVALID_HANDLE_VALUE;
                 }
             }
         }
@@ -276,6 +293,14 @@ namespace detail
 
     template<int N>
     module_state module<N>::state;
+
+    inline unsigned generate_next_error_id() noexcept
+    {
+        static atomic_unsigned_int & counter = module<>::state.sm().error_id_storage();
+        unsigned id = (counter += 4);
+        BOOST_LEAF_ASSERT((id&3) == 1);
+        return id;
+    }
 
     inline void NTAPI tls_callback(PVOID hinstDLL, DWORD dwReason, PVOID) noexcept
     {
