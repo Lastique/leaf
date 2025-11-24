@@ -28,11 +28,13 @@ namespace boost
 }
 #endif
 
-#include "so_dll_test_lib2.hpp"
+#define BOOST_LEAF_SO_DLL_TEST_BUILDING_LIB2
+
+#include "so_dll_lib2.hpp"
 
 namespace leaf = boost::leaf;
 
-leaf::result<void> BOOST_LEAF_SO_DLL_TEST_LIB2_API hidden_result2()
+BOOST_LEAF_SO_DLL_TEST_LIB2_API leaf::result<void> hidden_result2()
 {
     auto load = leaf::on_error( my_info<1>{1}, my_info<3>{3} );
     return leaf::new_error( my_info<2>{2} );
@@ -40,7 +42,7 @@ leaf::result<void> BOOST_LEAF_SO_DLL_TEST_LIB2_API hidden_result2()
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
-void BOOST_LEAF_SO_DLL_TEST_LIB2_API hidden_throw2()
+BOOST_LEAF_SO_DLL_TEST_LIB2_API void hidden_throw2()
 {
     auto load = leaf::on_error( my_info<1>{1}, my_info<3>{3} );
     leaf::throw_exception( my_info<2>{2} );

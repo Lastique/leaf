@@ -11,8 +11,8 @@
 #   include <boost/leaf/result.hpp>
 #endif
 
-#include "so_dll_test_lib1.hpp"
-#include "so_dll_test_lib2.hpp"
+#include "so_dll_lib1.hpp"
+#include "so_dll_lib2.hpp"
 
 #if BOOST_LEAF_CFG_STD_STRING
 #   include <sstream>

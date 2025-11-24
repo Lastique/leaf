@@ -230,8 +230,8 @@ if option_enable_unit_tests
     if target_machine.system() == 'windows'
         dep_so_dll = declare_dependency(compile_args: ['-DBOOST_LEAF_CFG_WIN32=2'])
     endif
-    so_dll_test_lib1 = shared_library('so_dll_test_lib1', 'test/so_dll_lib1.cpp', dependencies: [leaf, dep_so_dll])
-    so_dll_test_lib2 = shared_library('so_dll_test_lib2', 'test/so_dll_lib2.cpp', dependencies: [leaf, dep_so_dll])
+    so_dll_test_lib1 = shared_library('so_dll_test_lib1', 'test/so_dll_lib1.cpp', dependencies: [leaf, dep_so_dll], gnu_symbol_visibility: 'hidden')
+    so_dll_test_lib2 = shared_library('so_dll_test_lib2', 'test/so_dll_lib2.cpp', dependencies: [leaf, dep_so_dll], gnu_symbol_visibility: 'hidden')
     test('so_dll_test', executable('so_dll_test', 'test/so_dll_test.cpp', dependencies: [leaf, dep_so_dll], link_with: [so_dll_test_lib1, so_dll_test_lib2]))
 
 endif

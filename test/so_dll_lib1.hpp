@@ -7,30 +7,24 @@
 
 #include "so_dll_test.hpp"
 
-#ifdef BOOST_LEAF_SO_DLL_TEST_BUILDING_EXE
-#   if defined(_WIN32)
-#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API __declspec(dllimport)
+#ifdef _WIN32
+#   ifdef BOOST_LEAF_SO_DLL_TEST_BUILDING_LIB1
+#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API __declspec(dllexport)
 #   else
-#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API
+#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API __declspec(dllimport)
 #   endif
 #else
-#   if defined(_WIN32)
-#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API __declspec(dllexport)
-#   elif defined(__GNUC__)
-#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API __attribute__((visibility("default")))
-#   else
-#       define BOOST_LEAF_SO_DLL_TEST_LIB1_API
-#   endif
+#   define BOOST_LEAF_SO_DLL_TEST_LIB1_API BOOST_LEAF_SYMBOL_VISIBLE
 #endif
 
 namespace boost { namespace leaf {
     template <class T> class result;
 } }
 
-boost::leaf::result<void> BOOST_LEAF_SO_DLL_TEST_LIB1_API hidden_result1();
+BOOST_LEAF_SO_DLL_TEST_LIB1_API boost::leaf::result<void> hidden_result1();
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
-void BOOST_LEAF_SO_DLL_TEST_LIB1_API hidden_throw1();
+BOOST_LEAF_SO_DLL_TEST_LIB1_API void hidden_throw1();
 #endif
 
 #endif
