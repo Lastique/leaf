@@ -357,42 +357,38 @@ namespace detail
     template <bool OnError, class E>
     inline void dynamic_load( int err_id, E && e  ) noexcept(OnError)
     {
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
         if( OnError )
         {
-#ifndef BOOST_LEAF_NO_EXCEPTIONS
             try
             {
-#endif
                 dynamic_load_(err_id, std::forward<E>(e));
-#ifndef BOOST_LEAF_NO_EXCEPTIONS
             }
             catch(...)
             {
             }
-#endif
         }
         else
+#endif
             dynamic_load_(err_id, std::forward<E>(e));
     }
 
     template <bool OnError, class E, class F>
     inline void dynamic_load_accumulate( int err_id, F && f  ) noexcept(OnError)
     {
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
         if( OnError )
         {
-#ifndef BOOST_LEAF_NO_EXCEPTIONS
             try
             {
-#endif
                 dynamic_accumulate_<E>(err_id, std::forward<F>(f));
-#ifndef BOOST_LEAF_NO_EXCEPTIONS
             }
             catch(...)
             {
             }
-#endif
         }
         else
+#endif
             dynamic_accumulate_<E>(err_id, std::forward<F>(f));
     }
 }
