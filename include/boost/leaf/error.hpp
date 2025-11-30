@@ -334,24 +334,20 @@ namespace detail
     inline void dynamic_load_( int err_id, E && e )
     {
         if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
-        {
             if( dynamic_allocator * c = sl->has_value_any_key() )
                 c->dynamic_load(err_id, std::forward<E>(e));
             else
                 sl->load(err_id).dynamic_load(err_id, std::forward<E>(e));
-        }
     }
 
     template <class E, class F>
     inline void dynamic_accumulate_( int err_id, F && f )
     {
         if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
-        {
             if( dynamic_allocator * c = sl->has_value(err_id) )
                 (void) std::forward<F>(f)(c->dynamic_load(err_id, E{}));
             else
                 (void) std::forward<F>(f)(sl->load(err_id).dynamic_load(err_id, E{}));
-        }
     }
 
     template <bool OnError, class E>
