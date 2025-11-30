@@ -166,14 +166,14 @@ namespace detail
     template <class... Item>
     class preloaded
     {
-        preloaded & operator=( preloaded const & ) = delete;
-#if __cplusplus >= 201703L
         preloaded( preloaded const & ) = delete;
-#else
-        bool moved_ = false;
-#endif
+        preloaded & operator=( preloaded const & ) = delete;
+
         std::tuple<Item...> p_;
         error_monitor id_;
+#if __cplusplus < 201703L
+        bool moved_ = false;
+#endif
 
     public:
 
