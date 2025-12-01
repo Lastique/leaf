@@ -100,13 +100,13 @@ namespace detail
     BOOST_LEAF_CFG_TLS_INDEX_TYPE tls_index<T>::idx = BOOST_LEAF_CFG_TLS_ARRAY_START_INDEX + 1;
 
     template <class T>
-    struct BOOST_LEAF_SYMBOL_VISIBLE alloc_tls_index
+    struct BOOST_LEAF_SYMBOL_VISIBLE reserve_tls_index
     {
         static BOOST_LEAF_CFG_TLS_INDEX_TYPE const idx;
     };
 
     template <class T>
-    BOOST_LEAF_CFG_TLS_INDEX_TYPE const alloc_tls_index<T>::idx = tls_index<T>::idx = index_counter<>::next<T>();
+    BOOST_LEAF_CFG_TLS_INDEX_TYPE const reserve_tls_index<T>::idx = tls_index<T>::idx = index_counter<>::next<T>();
 }
 
 } }
@@ -137,12 +137,9 @@ namespace tls
     }
 
     template <class T>
-    BOOST_LEAF_ALWAYS_INLINE void write_ptr_alloc( T * p )
+    BOOST_LEAF_ALWAYS_INLINE void reserve()
     {
-        int tls_idx = detail::alloc_tls_index<T>::idx;
-        --tls_idx;
-        write_void_ptr(tls_idx, p);
-        BOOST_LEAF_ASSERT(read_void_ptr(tls_idx) == p);
+        (void) detail::reserve_tls_index<T>::idx;
     }
 
     template <class T>

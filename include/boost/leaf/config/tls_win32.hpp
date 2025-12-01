@@ -377,14 +377,11 @@ namespace tls
     }
 
     template <class T>
-    BOOST_LEAF_ALWAYS_INLINE void write_ptr_alloc(T * p)
+    BOOST_LEAF_ALWAYS_INLINE void reserve()
     {
         using namespace detail;
         thread_local DWORD const cached_slot = module<>::state.sm().get(type_hash<T>());
-        DWORD slot = cached_slot;
-        BOOST_LEAF_ASSERT(slot != TLS_OUT_OF_INDEXES);
-        BOOL r = TlsSetValue(slot, p);
-        BOOST_LEAF_ASSERT(r), (void) r;
+        BOOST_LEAF_ASSERT(cached_slot != TLS_OUT_OF_INDEXES), (void) cached_slot;
     }
 
     template <class T>

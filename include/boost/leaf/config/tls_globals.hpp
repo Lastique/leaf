@@ -70,9 +70,8 @@ namespace tls
     }
 
     template <class T>
-    BOOST_LEAF_ALWAYS_INLINE void write_ptr_alloc( T * p )
+    BOOST_LEAF_ALWAYS_INLINE void reserve()
     {
-        detail::ptr<T>::p = p;
     }
 
     template <class T>

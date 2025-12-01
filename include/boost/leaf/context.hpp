@@ -180,7 +180,14 @@ namespace detail
     template <int I, class Tup>
     struct tuple_for_each
     {
-        BOOST_LEAF_CONSTEXPR static void activate( Tup & tup )
+        BOOST_LEAF_CONSTEXPR static void reserve( Tup & tup )
+        {
+            static_assert(!std::is_same<error_info, typename std::decay<decltype(std::get<I-1>(tup))>::type>::value, "Bug in LEAF: context type deduction");
+            tuple_for_each<I-1,Tup>::reserve(tup);
+            std::tuple_element<I-1, Tup>::type::reserve();
+        }
+
+        BOOST_LEAF_CONSTEXPR static void activate( Tup & tup ) noexcept
         {
             static_assert(!std::is_same<error_info, typename std::decay<decltype(std::get<I-1>(tup))>::type>::value, "Bug in LEAF: context type deduction");
             tuple_for_each<I-1,Tup>::activate(tup);
@@ -215,6 +222,7 @@ namespace detail
     template <class Tup>
     struct tuple_for_each<0, Tup>
     {
+        BOOST_LEAF_CONSTEXPR static void reserve( Tup & ) noexcept { }
         BOOST_LEAF_CONSTEXPR static void activate( Tup & ) noexcept { }
         BOOST_LEAF_CONSTEXPR static void deactivate( Tup & ) noexcept { }
         BOOST_LEAF_CONSTEXPR static void unload( Tup &, int ) noexcept { }
@@ -339,6 +347,7 @@ public:
     {
         using namespace detail;
         BOOST_LEAF_ASSERT(!is_active());
+        tuple_for_each<std::tuple_size<Tup>::value,Tup>::reserve(tup_);
         tuple_for_each<std::tuple_size<Tup>::value,Tup>::activate(tup_);
 #if !defined(BOOST_LEAF_NO_THREADS) && !defined(NDEBUG)
         thread_id_ = std::this_thread::get_id();

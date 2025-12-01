@@ -719,6 +719,7 @@ namespace detail
         try_capture_all_( TryBlock && try_block )
         {
             detail::slot<detail::dynamic_allocator> sl;
+            detail::slot<detail::dynamic_allocator>::reserve();
             sl.activate();
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
             try
@@ -780,6 +781,7 @@ namespace detail
         try_capture_all_( TryBlock && try_block )
         {
             detail::slot<detail::dynamic_allocator> sl;
+            detail::slot<detail::dynamic_allocator>::reserve();
             sl.activate();
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
             try

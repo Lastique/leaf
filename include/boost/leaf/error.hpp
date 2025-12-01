@@ -132,10 +132,15 @@ namespace detail
             BOOST_LEAF_ASSERT(tls::read_ptr<slot<E>>() != this);
         }
 
-        void activate()
+        static void reserve()
+        {
+            tls::reserve<slot<E>>();
+        }
+
+        void activate() noexcept
         {
             prev_ = tls::read_ptr<slot<E>>();
-            tls::write_ptr_alloc<slot<E>>(this);
+            tls::write_ptr<slot<E>>(this);
         }
 
         void deactivate() const noexcept
@@ -283,6 +288,7 @@ namespace detail
             BOOST_LEAF_ASSERT(last_ != nullptr);
             BOOST_LEAF_ASSERT(*last_ == nullptr);
             BOOST_LEAF_ASSERT(tls::read_ptr<slot<T>>() == nullptr);
+            slot<T>::reserve();
             capturing_slot_node<T> * csn = new capturing_slot_node<T>(last_, err_id, std::forward<E>(e));
             csn->activate();
             return csn->value(err_id);
@@ -334,20 +340,24 @@ namespace detail
     inline void dynamic_load_( int err_id, E && e )
     {
         if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+        {
             if( dynamic_allocator * c = sl->has_value_any_key() )
                 c->dynamic_load(err_id, std::forward<E>(e));
             else
                 sl->load(err_id).dynamic_load(err_id, std::forward<E>(e));
+        }
     }
 
     template <class E, class F>
     inline void dynamic_accumulate_( int err_id, F && f )
     {
         if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+        {
             if( dynamic_allocator * c = sl->has_value(err_id) )
                 (void) std::forward<F>(f)(c->dynamic_load(err_id, E{}));
             else
                 (void) std::forward<F>(f)(sl->load(err_id).dynamic_load(err_id, E{}));
+        }
     }
 
     template <bool OnError, class E>

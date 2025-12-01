@@ -31,27 +31,20 @@ namespace tls
     // This function may not fail.
     unsigned read_current_error_id() noexcept;
 
-    // Write p to the TLS for T. The TLS may be allocated dynamically on the
-    // first call to write_ptr_alloc<T>, but subsequent calls must reuse the
-    // same TLS.
+    // Reserve TLS storage for T. The TLS may be allocated dynamically on the
+    // first call to reserve<T>, but subsequent calls must reuse the same TLS.
+    // On platforms where allocation is not needed, this function is still
+    // defined but does nothing.
     //
     // This function may throw on allocation failure.
     template <class T>
-    void write_ptr_alloc( T * p );
+    void reserve();
 
-    // Write p to the TLS previously allocated for T by a successful call to
-    // write_ptr_alloc<T>.
-    //
-    // This function may not fail.
+    // Write p to the TLS previously reserved for T by a call to reserve<T>.
+    // It is illegal to call write_ptr<T> without a prior successful call to
+    // reserve<T>. This function may not fail.
     template <class T>
     void write_ptr( T * p ) noexcept;
-
-    // Read the T * value previously written in the TLS for T. Returns nullptr
-    // if TLS for T has not yet been allocated.
-    //
-    // This function may not fail.
-    template <class T>
-    T * read_ptr() noexcept;
 }
 
 } }
