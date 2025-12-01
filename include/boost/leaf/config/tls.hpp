@@ -42,9 +42,18 @@ namespace tls
 
     // Write p to the TLS previously reserved for T by a call to reserve<T>.
     // It is illegal to call write_ptr<T> without a prior successful call to
-    // reserve<T>. This function may not fail.
+    // reserve<T>.
+    //
+    // This function may not fail.
     template <class T>
     void write_ptr( T * p ) noexcept;
+
+    // Read the T * value previously written in the TLS for T. Returns nullptr
+    // if TLS for T has not yet been reserved.
+    //
+    // This function may not fail.
+    template <class T>
+    T * read_ptr() noexcept;
 }
 
 } }
