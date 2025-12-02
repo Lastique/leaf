@@ -98,9 +98,12 @@ namespace detail
         BOOST_LEAF_CONSTEXPR preloaded_item( E && e ):
             e_(std::forward<E>(e))
         {
+#if BOOST_LEAF_CFG_CAPTURE
+            detail::dynamic_allocator::reserve<decay_E>();
+#endif
         }
 
-        BOOST_LEAF_CONSTEXPR void trigger( int err_id ) noexcept
+        BOOST_LEAF_CONSTEXPR void trigger( int err_id )
         {
             (void) load_slot<true>(err_id, std::move(e_));
         }
@@ -113,12 +116,15 @@ namespace detail
 
     public:
 
-        BOOST_LEAF_CONSTEXPR deferred_item( F && f ) noexcept:
+        BOOST_LEAF_CONSTEXPR deferred_item( F && f ):
             f_(std::forward<F>(f))
         {
+#if BOOST_LEAF_CFG_CAPTURE
+            detail::dynamic_allocator::reserve<typename std::decay<ReturnType>::type>();
+#endif
         }
 
-        BOOST_LEAF_CONSTEXPR void trigger( int err_id ) noexcept
+        BOOST_LEAF_CONSTEXPR void trigger( int err_id )
         {
             (void) load_slot_deferred<true>(err_id, f_);
         }
@@ -136,7 +142,7 @@ namespace detail
         {
         }
 
-        BOOST_LEAF_CONSTEXPR void trigger( int ) noexcept
+        BOOST_LEAF_CONSTEXPR void trigger( int )
         {
             f_();
         }
@@ -152,12 +158,15 @@ namespace detail
 
     public:
 
-        BOOST_LEAF_CONSTEXPR accumulating_item( F && f ) noexcept:
+        BOOST_LEAF_CONSTEXPR accumulating_item( F && f ):
             f_(std::forward<F>(f))
         {
+#if BOOST_LEAF_CFG_CAPTURE
+            detail::dynamic_allocator::reserve<typename std::decay<A0>::type>();
+#endif
         }
 
-        BOOST_LEAF_CONSTEXPR void trigger( int err_id ) noexcept
+        BOOST_LEAF_CONSTEXPR void trigger( int err_id )
         {
             load_slot_accumulate<true>(err_id, std::move(f_));
         }
@@ -198,7 +207,17 @@ namespace detail
                 return;
 #endif
             if( auto id = id_.check_id() )
-                tuple_for_each_preload<sizeof...(Item),decltype(p_)>::trigger(p_,id);
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
+                try
+                {
+#endif
+                    tuple_for_each_preload<sizeof...(Item),decltype(p_)>::trigger(p_,id);
+#ifndef BOOST_LEAF_NO_EXCEPTIONS
+                }
+                catch(...)
+                {
+                }
+#endif
         }
     };
 

@@ -70,7 +70,7 @@ namespace tls
     }
 
     template <class T>
-    BOOST_LEAF_ALWAYS_INLINE void reserve()
+    BOOST_LEAF_ALWAYS_INLINE void reserve_ptr()
     {
     }
 

@@ -32,17 +32,17 @@ namespace tls
     unsigned read_current_error_id() noexcept;
 
     // Reserve TLS storage for T. The TLS may be allocated dynamically on the
-    // first call to reserve<T>, but subsequent calls must reuse the same TLS.
-    // On platforms where allocation is not needed, this function is still
-    // defined but does nothing.
+    // first call to reserve_ptr<T>, but subsequent calls must reuse the same
+    // TLS. On platforms where allocation is not needed, this function is
+    // still defined but does nothing.
     //
     // This function may throw on allocation failure.
     template <class T>
-    void reserve();
+    void reserve_ptr();
 
-    // Write p to the TLS previously reserved for T by a call to reserve<T>.
+    // Write p to the TLS previously reserved for T by a call to reserve_ptr<T>.
     // It is illegal to call write_ptr<T> without a prior successful call to
-    // reserve<T>.
+    // reserve_ptr<T>.
     //
     // This function may not fail.
     template <class T>

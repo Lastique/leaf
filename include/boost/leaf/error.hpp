@@ -115,9 +115,18 @@ namespace detail
 
     public:
 
-        BOOST_LEAF_CONSTEXPR slot() noexcept:
+        BOOST_LEAF_CONSTEXPR slot():
             prev_(nullptr)
         {
+            tls::reserve_ptr<slot<E>>();
+        }
+
+        template <class T>
+        BOOST_LEAF_CONSTEXPR slot( int key, T && e ):
+            optional<E>(key, std::forward<T>(e)),
+            prev_(nullptr)
+        {
+            tls::reserve_ptr<slot<E>>();
         }
 
         BOOST_LEAF_CONSTEXPR slot( slot && x ) noexcept:
@@ -130,11 +139,6 @@ namespace detail
         ~slot() noexcept
         {
             BOOST_LEAF_ASSERT(tls::read_ptr<slot<E>>() != this);
-        }
-
-        static void reserve()
-        {
-            tls::reserve<slot<E>>();
         }
 
         void activate() noexcept
@@ -197,54 +201,60 @@ namespace detail
         };
 
         template <class E>
-        class capturing_slot_node:
-            public capturing_node,
-            public slot<E>
+        class capturing_slot_node final:
+            public slot<E>,
+            public capturing_node
         {
             using impl = slot<E>;
             capturing_slot_node( capturing_slot_node const & ) = delete;
             capturing_slot_node & operator=( capturing_slot_node const & ) = delete;
-            void deactivate() const noexcept final override
+            void deactivate() const noexcept override
             {
                 impl::deactivate();
             }
-            void unload( int err_id ) final override
+            void unload( int err_id ) override
             {
                 impl::unload(err_id);
             }
 #if BOOST_LEAF_CFG_DIAGNOSTICS
-            void print(std::ostream & os, error_id const & to_print, char const * & prefix) const final override
+            void print(std::ostream & os, error_id const & to_print, char const * & prefix) const override
             {
                 impl::print(os, to_print, prefix);
             }
 #endif
         public:
-            template <class T>
-            BOOST_LEAF_CONSTEXPR capturing_slot_node( capture_list::node * * & last, int err_id, T && e ):
+            BOOST_LEAF_CONSTEXPR explicit capturing_slot_node( capture_list::node * * & last ):
                 capturing_node(last)
             {
                 BOOST_LEAF_ASSERT(last == &next_);
                 BOOST_LEAF_ASSERT(next_ == nullptr);
-                impl::load(err_id, std::forward<T>(e));
+            }
+            template <class T>
+            BOOST_LEAF_CONSTEXPR capturing_slot_node( capture_list::node * * & last, int err_id, T && e ):
+                slot<E>(err_id, std::forward<T>(e)),
+                capturing_node(last)
+            {
+                BOOST_LEAF_ASSERT(last == &next_);
+                BOOST_LEAF_ASSERT(next_ == nullptr);
             }
         };
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
-        class capturing_exception_node:
+        class capturing_exception_node final:
             public capturing_node
         {
             capturing_exception_node( capturing_exception_node const & ) = delete;
             capturing_exception_node & operator=( capturing_exception_node const & ) = delete;
-            void deactivate() const noexcept final override
+            void deactivate() const noexcept override
             {
                 BOOST_LEAF_ASSERT(0);
             }
-            void unload( int ) final override
+            void unload( int ) override
             {
                 std::rethrow_exception(ex_);
             }
 #if BOOST_LEAF_CFG_DIAGNOSTICS
-            void print(std::ostream &, error_id const &, char const * &) const final override
+            void print(std::ostream &, error_id const &, char const * &) const override
             {
             }
 #endif
@@ -282,16 +292,24 @@ namespace detail
         }
 
         template <class E>
-        typename std::decay<E>::type & dynamic_load(int err_id, E && e)
+        typename std::decay<E>::type & load(int err_id, E && e)
         {
             using T = typename std::decay<E>::type;
             BOOST_LEAF_ASSERT(last_ != nullptr);
             BOOST_LEAF_ASSERT(*last_ == nullptr);
             BOOST_LEAF_ASSERT(tls::read_ptr<slot<T>>() == nullptr);
-            slot<T>::reserve();
             capturing_slot_node<T> * csn = new capturing_slot_node<T>(last_, err_id, std::forward<E>(e));
             csn->activate();
             return csn->value(err_id);
+        }
+
+        template <class E>
+        static void reserve()
+        {
+            if( !tls::read_ptr<slot<E>>() )
+                if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+                    if( dynamic_allocator * da = sl->has_value_any_key() )
+                        (new capturing_slot_node<E>(da->last_))->activate();
         }
 
         void deactivate() const noexcept
@@ -329,73 +347,35 @@ namespace detail
     }
 
     template <>
-    inline void slot<dynamic_allocator>::unload( int err_id ) noexcept(false)
+    inline void slot<dynamic_allocator>::unload( int err_id )
     {
         BOOST_LEAF_ASSERT(err_id);
-        if( dynamic_allocator * da1 = this->has_value_any_key() )
-            da1->unload(err_id);
+        if( dynamic_allocator * da = this->has_value_any_key() )
+            da->unload(err_id);
     }
 
     template <class E>
-    inline void dynamic_load_( int err_id, E && e )
+    inline void dynamic_load( int err_id, E && e )
     {
         if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
         {
-            if( dynamic_allocator * c = sl->has_value_any_key() )
-                c->dynamic_load(err_id, std::forward<E>(e));
+            if( dynamic_allocator * da = sl->has_value_any_key() )
+                da->load(err_id, std::forward<E>(e));
             else
-                sl->load(err_id).dynamic_load(err_id, std::forward<E>(e));
+                sl->load(err_id).load(err_id, std::forward<E>(e));
         }
     }
 
     template <class E, class F>
-    inline void dynamic_accumulate_( int err_id, F && f )
+    inline void dynamic_load_accumulate( int err_id, F && f )
     {
         if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
         {
-            if( dynamic_allocator * c = sl->has_value(err_id) )
-                (void) std::forward<F>(f)(c->dynamic_load(err_id, E{}));
+            if( dynamic_allocator * da = sl->has_value(err_id) )
+                (void) std::forward<F>(f)(da->load(err_id, E{}));
             else
-                (void) std::forward<F>(f)(sl->load(err_id).dynamic_load(err_id, E{}));
+                (void) std::forward<F>(f)(sl->load(err_id).load(err_id, E{}));
         }
-    }
-
-    template <bool OnError, class E>
-    inline void dynamic_load( int err_id, E && e  ) noexcept(OnError)
-    {
-#ifndef BOOST_LEAF_NO_EXCEPTIONS
-        if( OnError )
-        {
-            try
-            {
-                dynamic_load_(err_id, std::forward<E>(e));
-            }
-            catch(...)
-            {
-            }
-        }
-        else
-#endif
-            dynamic_load_(err_id, std::forward<E>(e));
-    }
-
-    template <bool OnError, class E, class F>
-    inline void dynamic_load_accumulate( int err_id, F && f  ) noexcept(OnError)
-    {
-#ifndef BOOST_LEAF_NO_EXCEPTIONS
-        if( OnError )
-        {
-            try
-            {
-                dynamic_accumulate_<E>(err_id, std::forward<F>(f));
-            }
-            catch(...)
-            {
-            }
-        }
-        else
-#endif
-            dynamic_accumulate_<E>(err_id, std::forward<F>(f));
     }
 }
 
@@ -423,12 +403,12 @@ namespace detail
         }
 #if BOOST_LEAF_CFG_CAPTURE
         else
-            dynamic_load<false>(err_id, std::move(*this).value(err_id));
+            dynamic_load(err_id, std::move(*this).value(err_id));
 #endif
     }
 
     template <bool OnError, class E>
-    BOOST_LEAF_CONSTEXPR inline int load_slot( int err_id, E && e ) noexcept(OnError)
+    BOOST_LEAF_CONSTEXPR inline int load_slot( int err_id, E && e )
     {
         using T = typename std::decay<E>::type;
         static_assert(!std::is_pointer<T>::value, "Error objects of pointer types are not allowed");
@@ -441,13 +421,13 @@ namespace detail
         }
 #if BOOST_LEAF_CFG_CAPTURE
         else
-            dynamic_load<OnError>(err_id, std::forward<E>(e));
+            dynamic_load(err_id, std::forward<E>(e));
 #endif        
         return 0;
     }
 
     template <bool OnError, class F>
-    BOOST_LEAF_CONSTEXPR inline int load_slot_deferred( int err_id, F && f ) noexcept(OnError)
+    BOOST_LEAF_CONSTEXPR inline int load_slot_deferred( int err_id, F && f )
     {
         using E = typename function_traits<F>::return_type;
         using T = typename std::decay<E>::type;
@@ -461,13 +441,13 @@ namespace detail
         }
 #if BOOST_LEAF_CFG_CAPTURE
         else
-            dynamic_load<OnError>(err_id, std::forward<F>(f)());
+            dynamic_load(err_id, std::forward<F>(f)());
 #endif        
         return 0;
     }
 
     template <bool OnError, class F>
-    BOOST_LEAF_CONSTEXPR inline int load_slot_accumulate( int err_id, F && f ) noexcept(OnError)
+    BOOST_LEAF_CONSTEXPR inline int load_slot_accumulate( int err_id, F && f )
     {
         static_assert(function_traits<F>::arity == 1, "Lambdas passed to accumulate must take a single e-type argument by reference");
         using E = typename std::decay<fn_arg_type<F,0>>::type;
@@ -483,7 +463,7 @@ namespace detail
         }
 #if BOOST_LEAF_CFG_CAPTURE
         else
-            dynamic_load_accumulate<OnError, E>(err_id, std::forward<F>(f));
+            dynamic_load_accumulate<E>(err_id, std::forward<F>(f));
 #endif
         return 0;
     }
@@ -502,7 +482,7 @@ namespace detail
     template <class E>
     struct load_item<E, -1>
     {
-        BOOST_LEAF_CONSTEXPR static int load_( int err_id, E && e ) noexcept
+        BOOST_LEAF_CONSTEXPR static int load_( int err_id, E && e )
         {
             return load_slot<false>(err_id, std::forward<E>(e));
         }
@@ -511,7 +491,7 @@ namespace detail
     template <class F>
     struct load_item<F, 0>
     {
-        BOOST_LEAF_CONSTEXPR static int load_( int err_id, F && f ) noexcept
+        BOOST_LEAF_CONSTEXPR static int load_( int err_id, F && f )
         {
             return load_slot_deferred<false>(err_id, std::forward<F>(f));
         }
@@ -520,7 +500,7 @@ namespace detail
     template <class F>
     struct load_item<F, 1>
     {
-        BOOST_LEAF_CONSTEXPR static int load_( int err_id, F && f ) noexcept
+        BOOST_LEAF_CONSTEXPR static int load_( int err_id, F && f )
         {
             return load_slot_accumulate<false>(err_id, std::forward<F>(f));
         }
@@ -552,7 +532,7 @@ namespace detail
         char const * fn;
 
         template <class T>
-        friend T operator+( inject_loc loc, T && x ) noexcept
+        friend T operator+( inject_loc loc, T && x ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
         {
             x.load_source_location_(loc.file, loc.line, loc.fn);
             return std::move(x);
@@ -564,14 +544,15 @@ namespace detail
 
 namespace detail
 {
-    class leaf_error_category final: public std::error_category
+    class leaf_error_category final:
+        public std::error_category
     {
-        bool equivalent( int,  std::error_condition const & ) const noexcept final override { return false; }
-        bool equivalent( std::error_code const &, int ) const noexcept final override { return false; }
-        char const * name() const noexcept final override { return "LEAF error"; }
-        std::string message( int ) const final override { return name(); }
+        bool equivalent( int,  std::error_condition const & ) const noexcept override { return false; }
+        bool equivalent( std::error_code const &, int ) const noexcept override { return false; }
+        char const * name() const noexcept override { return "LEAF error"; }
+        std::string message( int ) const override { return name(); }
     public:
-        ~leaf_error_category() noexcept final override { }
+        ~leaf_error_category() noexcept override { }
     };
 
     template <class=void>
@@ -583,7 +564,7 @@ namespace detail
     template <class T>
     leaf_error_category get_leaf_error_category<T>::cat;
 
-    inline int import_error_code( std::error_code const & ec ) noexcept
+    inline int import_error_code( std::error_code const & ec ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         if( int err_id = ec.value() )
         {
@@ -641,14 +622,14 @@ public:
     }
 
 #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
-    explicit error_id( std::error_code const & ec ) noexcept:
+    explicit error_id( std::error_code const & ec ) noexcept(!BOOST_LEAF_CFG_CAPTURE):
         value_(detail::import_error_code(std::error_code(ec)))
     {
         BOOST_LEAF_ASSERT(!value_ || ((value_&3) == 1));
     }
 
     template <class Enum>
-    error_id( Enum e, typename std::enable_if<std::is_error_code_enum<Enum>::value, int>::type = 0 ) noexcept:
+    error_id( Enum e, typename std::enable_if<std::is_error_code_enum<Enum>::value, int>::type = 0 ) noexcept(!BOOST_LEAF_CFG_CAPTURE):
         value_(detail::import_error_code(e))
     {
     }
@@ -666,7 +647,7 @@ public:
     }
 
     template <class Item>
-    BOOST_LEAF_CONSTEXPR error_id load(Item && item) const noexcept
+    BOOST_LEAF_CONSTEXPR error_id load(Item && item) const
     {
         if (int err_id = value())
         {
@@ -677,7 +658,7 @@ public:
     }
 
     template <class... Item>
-    BOOST_LEAF_CONSTEXPR error_id load( Item && ... item ) const noexcept
+    BOOST_LEAF_CONSTEXPR error_id load( Item && ... item ) const
     {
         if( int err_id = value() )
         {
@@ -719,7 +700,7 @@ public:
         return os << (x.value_ / 4);
     }
 
-    BOOST_LEAF_CONSTEXPR void load_source_location_( char const * file, int line, char const * function ) const noexcept
+    BOOST_LEAF_CONSTEXPR void load_source_location_( char const * file, int line, char const * function ) const noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         BOOST_LEAF_ASSERT(file&&*file);
         BOOST_LEAF_ASSERT(line>0);
@@ -744,7 +725,7 @@ inline error_id new_error() noexcept
 }
 
 template <class... Item>
-inline error_id new_error( Item && ... item ) noexcept
+inline error_id new_error( Item && ... item )
 {
     return detail::make_error_id(detail::new_id()).load(std::forward<Item>(item)...);
 }

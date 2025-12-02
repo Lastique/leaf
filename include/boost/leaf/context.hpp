@@ -180,13 +180,6 @@ namespace detail
     template <int I, class Tup>
     struct tuple_for_each
     {
-        BOOST_LEAF_CONSTEXPR static void reserve( Tup & tup )
-        {
-            static_assert(!std::is_same<error_info, typename std::decay<decltype(std::get<I-1>(tup))>::type>::value, "Bug in LEAF: context type deduction");
-            tuple_for_each<I-1,Tup>::reserve(tup);
-            std::tuple_element<I-1, Tup>::type::reserve();
-        }
-
         BOOST_LEAF_CONSTEXPR static void activate( Tup & tup ) noexcept
         {
             static_assert(!std::is_same<error_info, typename std::decay<decltype(std::get<I-1>(tup))>::type>::value, "Bug in LEAF: context type deduction");
@@ -222,7 +215,6 @@ namespace detail
     template <class Tup>
     struct tuple_for_each<0, Tup>
     {
-        BOOST_LEAF_CONSTEXPR static void reserve( Tup & ) noexcept { }
         BOOST_LEAF_CONSTEXPR static void activate( Tup & ) noexcept { }
         BOOST_LEAF_CONSTEXPR static void deactivate( Tup & ) noexcept { }
         BOOST_LEAF_CONSTEXPR static void unload( Tup &, int ) noexcept { }
@@ -294,7 +286,7 @@ class context
         raii_deactivator & operator=( raii_deactivator const & ) = delete;
         context * ctx_;
     public:
-        explicit BOOST_LEAF_CONSTEXPR BOOST_LEAF_ALWAYS_INLINE raii_deactivator(context & ctx):
+        explicit BOOST_LEAF_CONSTEXPR BOOST_LEAF_ALWAYS_INLINE raii_deactivator(context & ctx) noexcept:
             ctx_(ctx.is_active() ? nullptr : &ctx)
         {
             if( ctx_ )
@@ -323,7 +315,7 @@ public:
         BOOST_LEAF_ASSERT(!x.is_active());
     }
 
-    BOOST_LEAF_CONSTEXPR context() noexcept:
+    BOOST_LEAF_CONSTEXPR context():
         is_active_(false)
     {
     }
@@ -343,11 +335,10 @@ public:
         return tup_;
     }
 
-    BOOST_LEAF_CONSTEXPR void activate()
+    BOOST_LEAF_CONSTEXPR void activate() noexcept
     {
         using namespace detail;
         BOOST_LEAF_ASSERT(!is_active());
-        tuple_for_each<std::tuple_size<Tup>::value,Tup>::reserve(tup_);
         tuple_for_each<std::tuple_size<Tup>::value,Tup>::activate(tup_);
 #if !defined(BOOST_LEAF_NO_THREADS) && !defined(NDEBUG)
         thread_id_ = std::this_thread::get_id();
@@ -405,7 +396,7 @@ public:
     template <class R, class... H>
     BOOST_LEAF_CONSTEXPR R handle_error( error_id, H && ... );
 
-    friend BOOST_LEAF_CONSTEXPR BOOST_LEAF_ALWAYS_INLINE raii_deactivator activate_context(context & ctx)
+    friend BOOST_LEAF_CONSTEXPR BOOST_LEAF_ALWAYS_INLINE raii_deactivator activate_context(context & ctx) noexcept
     {
         return raii_deactivator(ctx);
     }

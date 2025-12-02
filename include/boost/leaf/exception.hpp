@@ -39,7 +39,7 @@ namespace detail
     inline void enforce_std_exception( std::exception const & ) noexcept { }
 
     template <class Ex>
-    class BOOST_LEAF_SYMBOL_VISIBLE exception:
+    class BOOST_LEAF_SYMBOL_VISIBLE exception final:
         public Ex,
         public exception_base,
         public error_id
@@ -51,14 +51,14 @@ namespace detail
             return tls::read_current_error_id() == unsigned(error_id::value());
         }
 
-        error_id get_error_id() const noexcept final override
+        error_id get_error_id() const noexcept override
         {
             clear_current_error_ = false;
             return *this;
         }
 
 #if BOOST_LEAF_CFG_DIAGNOSTICS && !defined(BOOST_LEAF_NO_EXCEPTIONS)
-        void print_type_name(std::ostream & os) const final override
+        void print_type_name(std::ostream & os) const override
         {
             detail::demangle_and_print(os, typeid(Ex).name());
         }
@@ -129,7 +129,7 @@ namespace detail
     template <class Ex, class... E>
     inline
     typename std::enable_if<std::is_base_of<std::exception,typename std::remove_reference<Ex>::type>::value, exception<typename std::remove_reference<Ex>::type>>::type
-    make_exception( error_id err, Ex && ex, E && ... e ) noexcept
+    make_exception( error_id err, Ex && ex, E && ... e ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         static_assert(!at_least_one_derives_from_std_exception<E...>::value, "Error objects passed to leaf::exception may not derive from std::exception");
         return exception<typename std::remove_reference<Ex>::type>( err.load(std::forward<E>(e)...), std::forward<Ex>(ex) );
@@ -138,7 +138,7 @@ namespace detail
     template <class E1, class... E>
     inline
     typename std::enable_if<!std::is_base_of<std::exception,typename std::remove_reference<E1>::type>::value, exception<std::exception>>::type
-    make_exception( error_id err, E1 && car, E && ... cdr ) noexcept
+    make_exception( error_id err, E1 && car, E && ... cdr ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         static_assert(!at_least_one_derives_from_std_exception<E...>::value, "Error objects passed to leaf::exception may not derive from std::exception");
         return exception<std::exception>( err.load(std::forward<E1>(car), std::forward<E>(cdr)...) );
@@ -152,7 +152,7 @@ namespace detail
     template <class Ex, class... E>
     inline
     typename std::enable_if<std::is_base_of<std::exception,typename std::remove_reference<Ex>::type>::value, exception<typename std::remove_reference<Ex>::type>>::type
-    make_exception( Ex && ex, E && ... e ) noexcept
+    make_exception( Ex && ex, E && ... e ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         static_assert(!at_least_one_derives_from_std_exception<E...>::value, "Error objects passed to leaf::exception may not derive from std::exception");
         return exception<typename std::remove_reference<Ex>::type>( new_error().load(std::forward<E>(e)...), std::forward<Ex>(ex) );
@@ -161,7 +161,7 @@ namespace detail
     template <class E1, class... E>
     inline
     typename std::enable_if<!std::is_base_of<std::exception,typename std::remove_reference<E1>::type>::value, exception<std::exception>>::type
-    make_exception( E1 && car, E && ... cdr ) noexcept
+    make_exception( E1 && car, E && ... cdr ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         static_assert(!at_least_one_derives_from_std_exception<E...>::value, "Error objects passed to leaf::exception may not derive from std::exception");
         return exception<std::exception>( new_error().load(std::forward<E1>(car), std::forward<E>(cdr)...) );
@@ -225,7 +225,7 @@ namespace detail
 template <class... Ex, class F>
 inline
 detail::deduce_exception_to_result_return_type<detail::fn_return_type<F>>
-exception_to_result( F && f ) noexcept
+exception_to_result( F && f ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
 {
     try
     {

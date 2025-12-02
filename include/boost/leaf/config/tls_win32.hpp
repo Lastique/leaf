@@ -377,7 +377,7 @@ namespace tls
     }
 
     template <class T>
-    BOOST_LEAF_ALWAYS_INLINE void reserve()
+    BOOST_LEAF_ALWAYS_INLINE void reserve_ptr()
     {
         using namespace detail;
         thread_local DWORD const cached_slot = module<>::state.sm().get(type_hash<T>());

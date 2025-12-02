@@ -21,7 +21,7 @@ namespace detail { class dynamic_allocator; }
 class bad_result:
     public std::exception
 {
-    char const * what() const noexcept final override
+    char const * what() const noexcept override
     {
         return "boost::leaf::bad_result";
     }
@@ -584,7 +584,7 @@ public:
     }
 
     template <class... Item>
-    error_id load( Item && ... item ) noexcept
+    error_id load( Item && ... item ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         return error_id(error()).load(std::forward<Item>(item)...);
     }
