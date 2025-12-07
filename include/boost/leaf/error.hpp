@@ -304,12 +304,13 @@ namespace detail
         }
 
         template <class E>
-        static void reserve()
+        void reserve()
         {
-            if( !tls::read_ptr<slot<E>>() )
-                if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
-                    if( dynamic_allocator * da = sl->has_value_any_key() )
-                        (new capturing_slot_node<E>(da->last_))->activate();
+            if( tls::read_ptr<slot<E>>() )
+                return;
+            BOOST_LEAF_ASSERT(last_ != nullptr);
+            BOOST_LEAF_ASSERT(*last_ == nullptr);
+            (new capturing_slot_node<E>(last_))->activate();
         }
 
         void deactivate() const noexcept
@@ -511,6 +512,30 @@ namespace detail
 
 namespace detail
 {
+#if BOOST_LEAF_CFG_CAPTURE
+    class BOOST_LEAF_SYMBOL_VISIBLE preloaded_base
+    {
+    protected:
+
+        preloaded_base() noexcept:
+            prev_(tls::read_ptr<preloaded_base>())
+        {
+            tls::write_ptr<preloaded_base>(this);
+        }
+
+        ~preloaded_base() noexcept
+        {
+            tls::write_ptr<preloaded_base>(prev_);
+        }
+
+    public:
+
+        preloaded_base * const prev_;
+
+        virtual void reserve( dynamic_allocator & ) const = 0;
+    };
+#endif
+
     inline int current_id() noexcept
     {
         unsigned id = tls::read_current_error_id();
@@ -523,6 +548,22 @@ namespace detail
         unsigned id = tls::generate_next_error_id();
         tls::write_current_error_id(id);
         return int(id);
+    }
+
+    inline int start_new_error()
+    {
+        int id = new_id();
+#if BOOST_LEAF_CFG_CAPTURE
+        if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+        {
+            dynamic_allocator * da = sl->has_value_any_key();
+            if( !da )
+                da = &sl->load(id);
+            for( preloaded_base const * e = tls::read_ptr<preloaded_base>(); e; e = e->prev_ )
+                e->reserve(*da);
+        }
+#endif
+        return id;
     }
 
     struct inject_loc
@@ -576,7 +617,7 @@ namespace detail
             }
             else
             {
-                err_id = new_id();
+                err_id = start_new_error();
                 (void) load_slot<false>(err_id, ec);
                 return (err_id&~3)|1;
             }
@@ -719,15 +760,15 @@ namespace detail
     }
 }
 
-inline error_id new_error() noexcept
+inline error_id new_error()
 {
-    return detail::make_error_id(detail::new_id());
+    return detail::make_error_id(detail::start_new_error());
 }
 
 template <class... Item>
 inline error_id new_error( Item && ... item )
 {
-    return detail::make_error_id(detail::new_id()).load(std::forward<Item>(item)...);
+    return detail::make_error_id(detail::start_new_error()).load(std::forward<Item>(item)...);
 }
 
 inline error_id current_error() noexcept

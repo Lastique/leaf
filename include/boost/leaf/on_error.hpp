@@ -40,7 +40,7 @@ public:
 #   else
             if( std::uncaught_exception() )
 #   endif
-                return detail::new_id();
+                return detail::start_new_error();
 #endif
             return 0;
         }
@@ -79,12 +79,24 @@ namespace detail
             tuple_for_each_preload<I-1,Tup>::trigger(tup,err_id);
             std::get<I-1>(tup).trigger(err_id);
         }
+
+#if BOOST_LEAF_CFG_CAPTURE
+        static void reserve( Tup const & tup, dynamic_allocator & da )
+        {
+            tuple_for_each_preload<I-1,Tup>::reserve(tup,da);
+            std::get<I-1>(tup).reserve(da);
+        }
+#endif
     };
 
     template <class Tup>
     struct tuple_for_each_preload<0, Tup>
     {
         BOOST_LEAF_CONSTEXPR static void trigger( Tup const &, int ) noexcept { }
+
+#if BOOST_LEAF_CFG_CAPTURE
+        static void reserve( Tup const &, dynamic_allocator & ) { }
+#endif
     };
 
     template <class E>
@@ -98,20 +110,28 @@ namespace detail
         BOOST_LEAF_CONSTEXPR preloaded_item( E && e ):
             e_(std::forward<E>(e))
         {
-#if BOOST_LEAF_CFG_CAPTURE
-            detail::dynamic_allocator::reserve<decay_E>();
-#endif
         }
 
         BOOST_LEAF_CONSTEXPR void trigger( int err_id )
         {
+#if BOOST_LEAF_CFG_CAPTURE
+            BOOST_LEAF_ASSERT(tls::read_ptr<slot<decay_E>>() || !tls::read_ptr<slot<dynamic_allocator>>());
+#endif
             (void) load_slot<true>(err_id, std::move(e_));
         }
+
+#if BOOST_LEAF_CFG_CAPTURE
+        void reserve( dynamic_allocator & da ) const
+        {
+            da.reserve<decay_E>();
+        }
+#endif
     };
 
     template <class F, class ReturnType = typename function_traits<F>::return_type>
     class deferred_item
     {
+        using decay_E = typename std::decay<ReturnType>::type;
         F f_;
 
     public:
@@ -119,15 +139,22 @@ namespace detail
         BOOST_LEAF_CONSTEXPR deferred_item( F && f ):
             f_(std::forward<F>(f))
         {
-#if BOOST_LEAF_CFG_CAPTURE
-            detail::dynamic_allocator::reserve<typename std::decay<ReturnType>::type>();
-#endif
         }
 
         BOOST_LEAF_CONSTEXPR void trigger( int err_id )
         {
+#if BOOST_LEAF_CFG_CAPTURE
+            BOOST_LEAF_ASSERT(tls::read_ptr<slot<decay_E>>() || !tls::read_ptr<slot<dynamic_allocator>>());
+#endif
             (void) load_slot_deferred<true>(err_id, f_);
         }
+
+#if BOOST_LEAF_CFG_CAPTURE
+        void reserve( dynamic_allocator & da ) const
+        {
+            da.reserve<decay_E>();
+        }
+#endif
     };
 
     template <class F>
@@ -146,6 +173,12 @@ namespace detail
         {
             f_();
         }
+
+#if BOOST_LEAF_CFG_CAPTURE
+        void reserve( dynamic_allocator & ) const
+        {
+        }
+#endif
     };
 
     template <class F, class A0 = fn_arg_type<F,0>, int arity = function_traits<F>::arity>
@@ -154,6 +187,7 @@ namespace detail
     template <class F, class A0>
     class accumulating_item<F, A0 &, 1>
     {
+        using decay_E = typename std::decay<A0>::type;
         F f_;
 
     public:
@@ -161,19 +195,29 @@ namespace detail
         BOOST_LEAF_CONSTEXPR accumulating_item( F && f ):
             f_(std::forward<F>(f))
         {
-#if BOOST_LEAF_CFG_CAPTURE
-            detail::dynamic_allocator::reserve<typename std::decay<A0>::type>();
-#endif
         }
 
         BOOST_LEAF_CONSTEXPR void trigger( int err_id )
         {
+#if BOOST_LEAF_CFG_CAPTURE
+            BOOST_LEAF_ASSERT(tls::read_ptr<slot<decay_E>>() || !tls::read_ptr<slot<dynamic_allocator>>());
+#endif
             load_slot_accumulate<true>(err_id, std::move(f_));
         }
+
+#if BOOST_LEAF_CFG_CAPTURE
+        void reserve( dynamic_allocator & da ) const
+        {
+            da.reserve<decay_E>();
+        }
+#endif
     };
 
     template <class... Item>
     class preloaded
+#if BOOST_LEAF_CFG_CAPTURE
+        : preloaded_base
+#endif
     {
         preloaded( preloaded const & ) = delete;
         preloaded & operator=( preloaded const & ) = delete;
@@ -182,6 +226,13 @@ namespace detail
         error_monitor id_;
 #if __cplusplus < 201703L
         bool moved_ = false;
+#endif
+
+#if BOOST_LEAF_CFG_CAPTURE
+        void reserve( dynamic_allocator & da ) const override
+        {
+            tuple_for_each_preload<sizeof...(Item),decltype(p_)>::reserve(p_,da);
+        }
 #endif
 
     public:

@@ -25,6 +25,10 @@ struct is_predicate: std::false_type
 
 namespace detail
 {
+#if BOOST_LEAF_CFG_CAPTURE
+    class preloaded_base;
+#endif
+
     template <class T>
     struct is_exception: std::is_base_of<std::exception, typename std::decay<T>::type>
     {
@@ -318,6 +322,9 @@ public:
     BOOST_LEAF_CONSTEXPR context():
         is_active_(false)
     {
+#if BOOST_LEAF_CFG_CAPTURE
+        tls::reserve_ptr<detail::preloaded_base>();
+#endif
     }
 
     ~context() noexcept

@@ -69,5 +69,17 @@ int main()
             auto load = leaf::on_error( inf1, info<-42>{-42} );
             return leaf::new_error();
         });
+
+#if BOOST_LEAF_CFG_CAPTURE
+    {
+        BOOST_TEST(leaf::tls::read_ptr<leaf::detail::preloaded_base>() == nullptr);
+        {
+            auto load = leaf::on_error( info<42>{42} );
+            BOOST_TEST(leaf::tls::read_ptr<leaf::detail::preloaded_base>() != nullptr);
+        }
+        BOOST_TEST(leaf::tls::read_ptr<leaf::detail::preloaded_base>() == nullptr);
+    }
+#endif
+
     return boost::report_errors();
 }
