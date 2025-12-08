@@ -377,7 +377,7 @@ namespace detail
             tls::reserve_ptr<slot<dynamic_allocator>>();
         }
 
-        BOOST_LEAF_CONSTEXPR slot( slot && x ) noexcept:
+        slot( slot && x ) noexcept:
             da_(std::move(x.da_)),
             prev_(nullptr)
         {
