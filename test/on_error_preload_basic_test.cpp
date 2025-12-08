@@ -6,6 +6,7 @@
 #   include "leaf.hpp"
 #else
 #   include <boost/leaf/on_error.hpp>
+#   include <boost/leaf/handle_errors.hpp>
 #   include <boost/leaf/diagnostics.hpp>
 #   include <boost/leaf/result.hpp>
 #endif
@@ -71,14 +72,19 @@ int main()
         });
 
 #if BOOST_LEAF_CFG_CAPTURE
-    {
-        BOOST_TEST(leaf::tls::read_ptr<leaf::detail::preloaded_base>() == nullptr);
+    (void) leaf::try_capture_all(
+        []() -> leaf::result<void>
         {
-            auto load = leaf::on_error( info<42>{42} );
-            BOOST_TEST(leaf::tls::read_ptr<leaf::detail::preloaded_base>() != nullptr);
-        }
-        BOOST_TEST(leaf::tls::read_ptr<leaf::detail::preloaded_base>() == nullptr);
-    }
+            leaf::detail::dynamic_allocator * da = leaf::detail::get_dynamic_allocator();
+            BOOST_TEST(da != nullptr);
+            BOOST_TEST(da->preloaded_list() == nullptr);
+            {
+                auto load = leaf::on_error( info<42>{42} );
+                BOOST_TEST(da->preloaded_list() != nullptr);
+            }
+            BOOST_TEST(da->preloaded_list() == nullptr);
+            return { };
+        } );
 #endif
 
     return boost::report_errors();

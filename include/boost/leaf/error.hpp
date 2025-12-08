@@ -168,9 +168,7 @@ namespace detail
 
         using impl::load;
         using impl::has_value;
-        using impl::has_value_any_key;
         using impl::value;
-        using impl::value_or_default;
     };
 }
 
@@ -180,11 +178,15 @@ namespace detail
 
 namespace detail
 {
+    class preloaded_base;
+
     class BOOST_LEAF_SYMBOL_VISIBLE dynamic_allocator:
         capture_list
     {
         dynamic_allocator( dynamic_allocator const & ) = delete;
         dynamic_allocator & operator=( dynamic_allocator const & ) = delete;
+
+        preloaded_base * preloaded_list_;
 
         class capturing_node:
             public capture_list::node
@@ -276,6 +278,7 @@ namespace detail
 
         dynamic_allocator() noexcept:
             capture_list(nullptr),
+            preloaded_list_(nullptr),
             last_(&first_)
         {
             BOOST_LEAF_ASSERT(first_ == nullptr);
@@ -283,34 +286,52 @@ namespace detail
 
         dynamic_allocator( dynamic_allocator && other ) noexcept:
             capture_list(std::move(other)),
+            preloaded_list_(nullptr),
             last_(other.last_ == &other.first_? &first_ : other.last_)
         {
             BOOST_LEAF_ASSERT(last_ != nullptr);
             BOOST_LEAF_ASSERT(*last_ == nullptr);
             BOOST_LEAF_ASSERT(other.first_ == nullptr);
+            BOOST_LEAF_ASSERT(other.preloaded_list_ == nullptr);
             other.last_ = &other.first_;
         }
 
-        template <class E>
-        typename std::decay<E>::type & load(int err_id, E && e)
+        preloaded_base * preloaded_list() const noexcept
         {
-            using T = typename std::decay<E>::type;
-            BOOST_LEAF_ASSERT(last_ != nullptr);
-            BOOST_LEAF_ASSERT(*last_ == nullptr);
-            BOOST_LEAF_ASSERT(tls::read_ptr<slot<T>>() == nullptr);
-            capturing_slot_node<T> * csn = new capturing_slot_node<T>(last_, err_id, std::forward<E>(e));
-            csn->activate();
-            return csn->value(err_id);
+            return preloaded_list_;
+        }
+
+        preloaded_base * link_preloaded_item(preloaded_base * pb) noexcept
+        {
+            BOOST_LEAF_ASSERT(pb != nullptr);
+            preloaded_base * next = preloaded_list_;
+            preloaded_list_ = pb;
+            return next;
+        }
+
+        void unlink_preloaded_item(preloaded_base * next) noexcept
+        {
+            preloaded_list_ = next;
         }
 
         template <class E>
-        void reserve()
+        slot<E> * alloc()
         {
-            if( tls::read_ptr<slot<E>>() )
-                return;
             BOOST_LEAF_ASSERT(last_ != nullptr);
             BOOST_LEAF_ASSERT(*last_ == nullptr);
-            (new capturing_slot_node<E>(last_))->activate();
+            BOOST_LEAF_ASSERT(tls::read_ptr<slot<E>>() == nullptr);
+            capturing_slot_node<E> * csn = new capturing_slot_node<E>(last_);
+            csn->activate();
+            return csn;
+        }
+
+        template <class E>
+        slot<E> * reserve() noexcept
+        {
+            if( slot<E> * p = tls::read_ptr<slot<E>>() )
+                return p;
+            else
+                return alloc<E>();
         }
 
         void deactivate() const noexcept
@@ -340,44 +361,62 @@ namespace detail
     };
 
     template <>
-    inline void slot<dynamic_allocator>::deactivate() const noexcept
+    class slot<dynamic_allocator>
     {
-        if( dynamic_allocator const * c = this->has_value_any_key() )
-            c->deactivate();
-        tls::write_ptr<slot<dynamic_allocator>>(prev_);
-    }
+        slot( slot const & ) = delete;
+        slot & operator=( slot const & ) = delete;
 
-    template <>
-    inline void slot<dynamic_allocator>::unload( int err_id )
-    {
-        BOOST_LEAF_ASSERT(err_id);
-        if( dynamic_allocator * da = this->has_value_any_key() )
-            da->unload(err_id);
-    }
+        dynamic_allocator da_;
+        slot * prev_;
 
-    template <class E>
-    inline void dynamic_load( int err_id, E && e )
-    {
-        if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+    public:
+
+        slot() noexcept:
+            prev_(nullptr)
         {
-            if( dynamic_allocator * da = sl->has_value_any_key() )
-                da->load(err_id, std::forward<E>(e));
-            else
-                sl->load(err_id).load(err_id, std::forward<E>(e));
+            tls::reserve_ptr<slot<dynamic_allocator>>();
         }
-    }
 
-    template <class E, class F>
-    inline void dynamic_load_accumulate( int err_id, F && f )
-    {
-        if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+        ~slot() noexcept
         {
-            if( dynamic_allocator * da = sl->has_value(err_id) )
-                (void) std::forward<F>(f)(da->load(err_id, E{}));
-            else
-                (void) std::forward<F>(f)(sl->load(err_id).load(err_id, E{}));
+            BOOST_LEAF_ASSERT(tls::read_ptr<slot<dynamic_allocator>>() != this);
         }
-    }
+
+        dynamic_allocator const & get() const noexcept
+        {
+            return da_;
+        }
+
+        dynamic_allocator & get() noexcept
+        {
+            return da_;
+        }
+
+        void activate() noexcept
+        {
+            prev_ = tls::read_ptr<slot<dynamic_allocator>>();
+            tls::write_ptr<slot<dynamic_allocator>>(this);
+        }
+
+        void deactivate() const noexcept
+        {
+            da_.deactivate();
+            tls::write_ptr<slot<dynamic_allocator>>(prev_);
+        }
+
+        void unload( int err_id )
+        {
+            BOOST_LEAF_ASSERT(err_id);
+            da_.unload(err_id);
+        }
+
+#if BOOST_LEAF_CFG_DIAGNOSTICS
+        template <class CharT, class Traits, class ErrorID>
+        void print(std::basic_ostream<CharT, Traits> &, ErrorID, char const * &) const
+        {
+        }
+#endif
+    };
 }
 
 template <>
@@ -391,21 +430,36 @@ struct show_in_diagnostics<detail::dynamic_allocator>: std::false_type
 
 namespace detail
 {
+#if BOOST_LEAF_CFG_CAPTURE
+    inline dynamic_allocator * get_dynamic_allocator() noexcept
+    {
+        if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
+            return &sl->get();
+        return nullptr;
+    }
+#endif
+
+    template <class E>
+    inline slot<E> * get_slot() noexcept
+    {
+        if( slot<E> * p = tls::read_ptr<slot<E>>() )
+            return p;
+#if BOOST_LEAF_CFG_CAPTURE
+        if( dynamic_allocator * da = get_dynamic_allocator() )
+            return da->alloc<E>();
+#endif
+        return nullptr;
+    }
+
     template <class E>
     inline void slot<E>::unload( int err_id ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
     {
         BOOST_LEAF_ASSERT(err_id);
         if( this->key() != err_id )
             return;
-        if( impl * p = tls::read_ptr<slot<E>>() )
-        {
+        if( impl * p = get_slot<E>() )
             if( !p->has_value(err_id) )
                 *p = std::move(*this);
-        }
-#if BOOST_LEAF_CFG_CAPTURE
-        else
-            dynamic_load(err_id, std::move(*this).value(err_id));
-#endif
     }
 
     template <bool OnError, class E>
@@ -415,15 +469,9 @@ namespace detail
         static_assert(!std::is_pointer<T>::value, "Error objects of pointer types are not allowed");
         static_assert(!std::is_same<T, error_id>::value, "Error objects of type error_id are not allowed");
         BOOST_LEAF_ASSERT((err_id&3) == 1);
-        if( slot<T> * p = tls::read_ptr<slot<T>>() )
-        {
+        if( slot<T> * p = get_slot<T>() )
             if( !OnError || !p->has_value(err_id) )
                 (void) p->load(err_id, std::forward<E>(e));
-        }
-#if BOOST_LEAF_CFG_CAPTURE
-        else
-            dynamic_load(err_id, std::forward<E>(e));
-#endif        
         return 0;
     }
 
@@ -435,15 +483,9 @@ namespace detail
         static_assert(!std::is_pointer<T>::value, "Error objects of pointer types are not allowed");
         static_assert(!std::is_same<T, error_id>::value, "Error objects of type error_id are not allowed");
         BOOST_LEAF_ASSERT((err_id&3) == 1);
-        if( slot<T> * p = tls::read_ptr<slot<T>>() )
-        {
+        if( slot<T> * p = get_slot<T>() )
             if( !OnError || !p->has_value(err_id) )
                 (void) p->load(err_id, std::forward<F>(f)());
-        }
-#if BOOST_LEAF_CFG_CAPTURE
-        else
-            dynamic_load(err_id, std::forward<F>(f)());
-#endif        
         return 0;
     }
 
@@ -451,21 +493,15 @@ namespace detail
     BOOST_LEAF_CONSTEXPR inline int load_slot_accumulate( int err_id, F && f )
     {
         static_assert(function_traits<F>::arity == 1, "Lambdas passed to accumulate must take a single e-type argument by reference");
-        using E = typename std::decay<fn_arg_type<F,0>>::type;
+        using E = fn_arg_type<F,0>;
         using T = typename std::decay<E>::type;
         static_assert(!std::is_pointer<T>::value, "Error objects of pointer types are not allowed");
         BOOST_LEAF_ASSERT((err_id&3) == 1);
-        if( auto sl = tls::read_ptr<slot<E>>() )
-        {
-            if( auto v = sl->has_value(err_id) )
+        if( slot<T> * p = get_slot<T>() )
+            if( T * v = p->has_value(err_id) )
                 (void) std::forward<F>(f)(*v);
             else
-                (void) std::forward<F>(f)(sl->load(err_id,E()));
-        }
-#if BOOST_LEAF_CFG_CAPTURE
-        else
-            dynamic_load_accumulate<E>(err_id, std::forward<F>(f));
-#endif
+                (void) std::forward<F>(f)(p->load(err_id, T()));
         return 0;
     }
 }
@@ -518,19 +554,27 @@ namespace detail
     protected:
 
         preloaded_base() noexcept:
-            prev_(tls::read_ptr<preloaded_base>())
+            next_(
+                []( preloaded_base * this_ ) -> preloaded_base *
+                {
+                    if( dynamic_allocator * da = get_dynamic_allocator() )
+                        return da->link_preloaded_item(this_);
+                    return nullptr;
+                }(this))
         {
-            tls::write_ptr<preloaded_base>(this);
         }
 
         ~preloaded_base() noexcept
         {
-            tls::write_ptr<preloaded_base>(prev_);
+            if( dynamic_allocator * da = get_dynamic_allocator() )
+                da->unlink_preloaded_item(next_);
+            else
+                BOOST_LEAF_ASSERT(next_ == nullptr);
         }
 
     public:
 
-        preloaded_base * const prev_;
+        preloaded_base * const next_;
 
         virtual void reserve( dynamic_allocator & ) const = 0;
     };
@@ -554,14 +598,9 @@ namespace detail
     {
         int id = new_id();
 #if BOOST_LEAF_CFG_CAPTURE
-        if( slot<dynamic_allocator> * sl = tls::read_ptr<slot<dynamic_allocator>>() )
-        {
-            dynamic_allocator * da = sl->has_value_any_key();
-            if( !da )
-                da = &sl->load(id);
-            for( preloaded_base const * e = tls::read_ptr<preloaded_base>(); e; e = e->prev_ )
+        if( dynamic_allocator * da = get_dynamic_allocator() )
+            for( preloaded_base const * e = da->preloaded_list(); e; e = e->next_ )
                 e->reserve(*da);
-        }
 #endif
         return id;
     }

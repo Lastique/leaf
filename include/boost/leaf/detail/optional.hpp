@@ -131,16 +131,6 @@ namespace detail
             return value_;
         }
 
-        BOOST_LEAF_CONSTEXPR T const * has_value_any_key() const noexcept
-        {
-            return key_ ? &value_ : nullptr;
-        }
-
-        BOOST_LEAF_CONSTEXPR T * has_value_any_key() noexcept
-        {
-            return key_ ? &value_ : nullptr;
-        }
-
         BOOST_LEAF_CONSTEXPR T const * has_value(int key) const noexcept
         {
             BOOST_LEAF_ASSERT(key);
@@ -181,14 +171,6 @@ namespace detail
             T tmp(std::move(value_));
             reset();
             return tmp;
-        }
-
-        BOOST_LEAF_CONSTEXPR T & value_or_default(int key) noexcept
-        {
-            if( T * v = has_value(key) )
-                return *v;
-            else
-                return load(key);
         }
     };
 
