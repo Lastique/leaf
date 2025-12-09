@@ -87,4 +87,4 @@ namespace tls
 #   include <boost/leaf/config/tls_cpp11.hpp>
 #endif
 
-#endif // BOOST_LEAF_CONFIG_TLS_HPP_INCLUDED
+#endif // #ifndef BOOST_LEAF_CONFIG_TLS_HPP_INCLUDED

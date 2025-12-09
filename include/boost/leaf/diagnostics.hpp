@@ -1,7 +1,7 @@
 #ifndef BOOST_LEAF_DIAGNOSTICS_HPP_INCLUDED
 #define BOOST_LEAF_DIAGNOSTICS_HPP_INCLUDED
 
-// Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
+// Copyright 2018-2025 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
@@ -68,7 +68,7 @@ namespace detail
     };
 }
 
-#else
+#else // #if BOOST_LEAF_CFG_DIAGNOSTICS
 
 class diagnostic_info: public error_info
 {
@@ -117,7 +117,7 @@ namespace detail
     };
 }
 
-#endif
+#endif // #else (#if BOOST_LEAF_CFG_DIAGNOSTICS)
 
 ////////////////////////////////////////
 
@@ -182,7 +182,7 @@ namespace detail
     };
 }
 
-#else
+#else // #if BOOST_LEAF_CFG_CAPTURE
 
 class diagnostic_details: public diagnostic_info
 {
@@ -233,9 +233,9 @@ namespace detail
     };
 }
 
-#endif
+#endif // #else (#if BOOST_LEAF_CFG_CAPTURE)
 
-#else
+#else // #if BOOST_LEAF_CFG_DIAGNOSTICS
 
 class diagnostic_details: public diagnostic_info
 {
@@ -284,10 +284,10 @@ namespace detail
     };
 }
 
-#endif
+#endif // #else (#if BOOST_LEAF_CFG_DIAGNOSTICS)
 
 using verbose_diagnostic_info = diagnostic_details;
 
 } }
 
-#endif // BOOST_LEAF_DIAGNOSTICS_HPP_INCLUDED
+#endif // #ifndef BOOST_LEAF_DIAGNOSTICS_HPP_INCLUDED

@@ -1,7 +1,7 @@
 #ifndef BOOST_LEAF_ERROR_HPP_INCLUDED
 #define BOOST_LEAF_ERROR_HPP_INCLUDED
 
-// Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
+// Copyright 2018-2025 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
@@ -45,7 +45,7 @@
         std::move(BOOST_LEAF_TMP);\
     }).value()
 
-#else
+#else // #if BOOST_LEAF_CFG_GNUC_STMTEXPR
 
 #define BOOST_LEAF_CHECK(r)\
     {\
@@ -56,7 +56,7 @@
             return BOOST_LEAF_TMP.error();\
     }
 
-#endif
+#endif // #else (#if BOOST_LEAF_CFG_GNUC_STMTEXPR)
 
 #define BOOST_LEAF_NEW_ERROR ::boost::leaf::detail::inject_loc{__FILE__,__LINE__,__FUNCTION__}+::boost::leaf::new_error
 
@@ -270,7 +270,7 @@ namespace detail
                 BOOST_LEAF_ASSERT(ex_);
             }
         };
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
         node * * last_;
 
@@ -431,7 +431,7 @@ struct show_in_diagnostics<detail::dynamic_allocator>: std::false_type
 {
 };
 
-#endif
+#endif // #if BOOST_LEAF_CFG_CAPTURE
 
 ////////////////////////////////////////
 
@@ -585,7 +585,7 @@ namespace detail
 
         virtual void reserve( dynamic_allocator & ) const = 0;
     };
-#endif
+#endif // #if BOOST_LEAF_CFG_CAPTURE
 
     inline int current_id() noexcept
     {
@@ -680,7 +680,7 @@ inline bool is_error_id( std::error_code const & ec ) noexcept
     return res;
 }
 
-#endif
+#endif // #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
 ////////////////////////////////////////
 
@@ -726,7 +726,7 @@ public:
     {
         return std::error_code(value_, detail::get_leaf_error_category<>::cat);
     }
-#endif
+#endif // #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
     BOOST_LEAF_CONSTEXPR error_id load() const noexcept
     {
@@ -836,4 +836,4 @@ struct is_result_type<R const>: is_result_type<R>
 
 } }
 
-#endif // BOOST_LEAF_ERROR_HPP_INCLUDED
+#endif // #ifndef BOOST_LEAF_ERROR_HPP_INCLUDED

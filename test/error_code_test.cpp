@@ -14,7 +14,7 @@ int main()
     return 0;
 }
 
-#else
+#else // #if !BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
 #ifdef BOOST_LEAF_TEST_SINGLE_HEADER
 #   include "leaf.hpp"
@@ -99,7 +99,7 @@ void test()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
 
     {
         int r = leaf::try_handle_all(
@@ -156,7 +156,7 @@ void test()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
     {
         int r = leaf::try_handle_all(
             []() -> R
@@ -214,7 +214,7 @@ void test()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
 
     {
         int r = leaf::try_handle_all(
@@ -273,7 +273,7 @@ void test()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
     {
         int r = leaf::try_handle_all(
             []() -> R
@@ -315,7 +315,7 @@ void test()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
 }
 
 template <class R>
@@ -382,7 +382,7 @@ void test_void()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
 
     {
         int r = 0;
@@ -442,7 +442,7 @@ void test_void()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
     {
         int r = 0;
         leaf::try_handle_all(
@@ -503,7 +503,7 @@ void test_void()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
 
     {
         int r = 0;
@@ -565,7 +565,7 @@ void test_void()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
     {
         int r = 0;
         leaf::try_handle_all(
@@ -609,7 +609,7 @@ void test_void()
             } );
         BOOST_TEST_EQ(r, 42);
     }
-#endif
+#endif // #if __cplusplus >= 201703L
 }
 
 int main()
@@ -624,4 +624,4 @@ int main()
     return boost::report_errors();
 }
 
-#endif
+#endif // #if !BOOST_LEAF_CFG_STD_SYSTEM_ERROR

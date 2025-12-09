@@ -69,4 +69,4 @@ int main()
     return boost::report_errors();
 }
 
-#endif
+#endif // #ifndef _WIN32

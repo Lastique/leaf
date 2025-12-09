@@ -1,7 +1,7 @@
 #ifndef BOOST_LEAF_CONFIG_HPP_INCLUDED
 #define BOOST_LEAF_CONFIG_HPP_INCLUDED
 
-// Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
+// Copyright 2018-2025 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
@@ -27,7 +27,7 @@
 #   ifndef BOOST_LEAF_CFG_CAPTURE
 #       define BOOST_LEAF_CFG_CAPTURE 0
 #   endif
-#endif
+#endif // #ifdef BOOST_LEAF_EMBEDDED
 
 ////////////////////////////////////////
 
@@ -162,7 +162,7 @@
 #       endif
 #   endif
 
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
 ////////////////////////////////////////
 
@@ -260,4 +260,4 @@ template <class T>
 // Configure TLS access
 #include <boost/leaf/config/tls.hpp>
 
-#endif // BOOST_LEAF_CONFIG_HPP_INCLUDED
+#endif // #ifndef BOOST_LEAF_CONFIG_HPP_INCLUDED

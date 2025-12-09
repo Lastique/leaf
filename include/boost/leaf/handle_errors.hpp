@@ -1,7 +1,7 @@
 #ifndef BOOST_LEAF_HANDLE_ERRORS_HPP_INCLUDED
 #define BOOST_LEAF_HANDLE_ERRORS_HPP_INCLUDED
 
-// Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
+// Copyright 2018-2025 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
@@ -30,7 +30,7 @@ namespace detail
     }
 }
 
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
 ////////////////////////////////////////
 
@@ -97,7 +97,7 @@ public:
                 detail::demangle_and_print(os, typeid(*ex_).name());
             os << ": \"" << ex_->what() << '"';
         }
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
     }
 
     template <class CharT, class Traits>
@@ -202,7 +202,7 @@ namespace detail
                 return nullptr;
         }
     };
-#endif
+#endif // #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
     template <class E>
     struct peek_exception<E, true>
@@ -222,7 +222,7 @@ namespace detail
         }
     };
 
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
     template <class E, bool = does_not_participate_in_context_deduction<E>::value>
     struct peek_tuple;
@@ -570,7 +570,7 @@ try_catch( TryBlock && try_block, H && ... ) noexcept
     return std::forward<TryBlock>(try_block)();
 }
 
-#else
+#else // #ifdef BOOST_LEAF_NO_EXCEPTIONS
 
 namespace detail
 {
@@ -701,7 +701,7 @@ try_catch( TryBlock && try_block, H && ... h )
     }
 }
 
-#endif
+#endif // #else (#ifdef BOOST_LEAF_NO_EXCEPTIONS)
 
 #if BOOST_LEAF_CFG_CAPTURE
 
@@ -749,7 +749,7 @@ namespace detail
                 int err_id = current_error().value();
                 return sl.get().template extract_capture_list<leaf_result>(err_id);
             }
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
         }
     };
 
@@ -801,7 +801,7 @@ namespace detail
                 int err_id = current_error().value();
                 return sl.get().template extract_capture_list<leaf_result>(err_id);
             }
-#endif
+#endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
         }
     };
 }
@@ -813,7 +813,8 @@ try_capture_all( TryBlock && try_block ) noexcept
 {
     return detail::try_capture_all_dispatch<decltype(std::declval<TryBlock>()())>::try_capture_all_(std::forward<TryBlock>(try_block));
 }
-#endif
+
+#endif // #if BOOST_LEAF_CFG_CAPTURE
 
 } }
 
@@ -879,4 +880,4 @@ namespace detail
 
 } }
 
-#endif // BOOST_LEAF_HANDLE_ERRORS_HPP_INCLUDED
+#endif // #ifndef BOOST_LEAF_HANDLE_ERRORS_HPP_INCLUDED

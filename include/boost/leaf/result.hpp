@@ -1,7 +1,7 @@
 #ifndef BOOST_LEAF_RESULT_HPP_INCLUDED
 #define BOOST_LEAF_RESULT_HPP_INCLUDED
 
-// Copyright 2018-2024 Emil Dotchevski and Reverge Studios, Inc.
+// Copyright 2018-2025 Emil Dotchevski and Reverge Studios, Inc.
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
@@ -414,7 +414,7 @@ public:
     {
     }
 
-#else
+#else // #if defined(BOOST_STRICT_CONFIG) || !defined(__clang__)
 
 private:
     static int init_T_with_A( T && );
@@ -428,7 +428,7 @@ public:
     {
     }
 
-#endif
+#endif // #else (#if defined(BOOST_STRICT_CONFIG) || !defined(__clang__))
 
 #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
     result( std::error_code const & ec ) noexcept:
@@ -441,7 +441,7 @@ public:
         what_(error_id(e))
     {
     }
-#endif
+#endif // #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
     ~result() noexcept
     {
@@ -492,7 +492,7 @@ public:
         return stored_;
     }
 
-#else
+#else // #ifdef BOOST_LEAF_NO_CXX11_REF_QUALIFIERS
 
     value_cref value() const &
     {
@@ -518,7 +518,7 @@ public:
         return std::move(stored_);
     }
 
-#endif
+#endif // #else (#ifdef BOOST_LEAF_NO_CXX11_REF_QUALIFIERS)
 
     value_no_ref_const * operator->() const noexcept
     {
@@ -546,7 +546,7 @@ public:
         return *p;
     }
 
-#else
+#else // #ifdef BOOST_LEAF_NO_CXX11_REF_QUALIFIERS
 
     value_cref operator*() const & noexcept
     {
@@ -576,7 +576,7 @@ public:
         return std::move(*p);
     }
 
-#endif
+#endif // #else (#ifdef BOOST_LEAF_NO_CXX11_REF_QUALIFIERS)
 
     error_result error() noexcept
     {
@@ -665,7 +665,7 @@ public:
         base(e)
     {
     }
-#endif
+#endif // #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
     ~result() noexcept
     {
@@ -728,4 +728,4 @@ struct is_result_type<result<T>>: std::true_type
 
 } }
 
-#endif // BOOST_LEAF_RESULT_HPP_INCLUDED
+#endif // #ifndef BOOST_LEAF_RESULT_HPP_INCLUDED
