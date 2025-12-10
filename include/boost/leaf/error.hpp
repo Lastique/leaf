@@ -426,11 +426,6 @@ namespace detail
     };
 }
 
-template <>
-struct show_in_diagnostics<detail::dynamic_allocator>: std::false_type
-{
-};
-
 #endif // #if BOOST_LEAF_CFG_CAPTURE
 
 ////////////////////////////////////////
