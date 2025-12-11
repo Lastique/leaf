@@ -64,7 +64,7 @@ public:
     {
         return detail::make_error_id(get_id());
     }
-};
+}; // class error_monitor
 
 ////////////////////////////////////////
 
@@ -292,7 +292,7 @@ namespace detail
     {
         using type = accumulating_item<F>;
     };
-}
+} // namespace detail
 
 template <class... Item>
 BOOST_LEAF_ATTRIBUTE_NODISCARD BOOST_LEAF_CONSTEXPR inline
@@ -302,6 +302,6 @@ on_error( Item && ... i )
     return detail::preloaded<typename detail::deduce_item_type<Item>::type...>(std::forward<Item>(i)...);
 }
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_ON_ERROR_HPP_INCLUDED

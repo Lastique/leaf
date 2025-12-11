@@ -39,7 +39,7 @@ namespace detail
     inline void enforce_std_exception( std::exception const & ) noexcept { }
 
     template <class Ex>
-    class BOOST_LEAF_SYMBOL_VISIBLE exception final:
+    class exception final:
         public Ex,
         public exception_base,
         public error_id
@@ -112,7 +112,7 @@ namespace detail
             if( clear_current_error_ && is_current_exception() )
                 tls::write_current_error_id(0);
         }
-    };
+    }; // template exception
 
     template <class... T>
     struct at_least_one_derives_from_std_exception;
@@ -171,7 +171,7 @@ namespace detail
     {
         return exception<std::exception>(leaf::new_error());
     }
-}
+} // namespace detail
 
 template <class... E>
 [[noreturn]] void throw_exception( E && ... e )
@@ -186,9 +186,6 @@ template <class... E>
 ////////////////////////////////////////
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
-
-template <class T>
-class BOOST_LEAF_SYMBOL_VISIBLE result;
 
 namespace detail
 {
@@ -220,7 +217,7 @@ namespace detail
 
     template <class T>
     using deduce_exception_to_result_return_type = typename deduce_exception_to_result_return_type_impl<T>::type;
-}
+} // namespace detail
 
 template <class... Ex, class F>
 inline
@@ -243,6 +240,6 @@ exception_to_result( F && f ) noexcept(!BOOST_LEAF_CFG_CAPTURE)
 
 #endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_EXCEPTION_HPP_INCLUDED

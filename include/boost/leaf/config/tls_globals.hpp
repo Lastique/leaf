@@ -42,9 +42,9 @@ namespace detail
 
     template <class T>
     unsigned current_error_id_storage<T>::x = 0;
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 ////////////////////////////////////////
 
@@ -85,8 +85,8 @@ namespace tls
     {
         return detail::ptr<T>::p;
     }
-}
+} // namespace tls
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_CONFIG_TLS_GLOBALS_HPP_INCLUDED

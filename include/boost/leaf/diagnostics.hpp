@@ -44,7 +44,7 @@ protected:
         x.print_diagnostic_info(os);
         return os << '\n';
     }
-};
+}; // class diagnostic_info
 
 namespace detail
 {
@@ -94,7 +94,7 @@ protected:
         x.print_diagnostic_info(os);
         return os << "\n";
     }
-};
+}; // class diagnostic_info
 
 namespace detail
 {
@@ -157,7 +157,7 @@ protected:
         x.print_diagnostic_details(os);
         return os << '\n';
     }
-};
+}; // class diagnostic_details
 
 namespace detail
 {
@@ -209,7 +209,7 @@ protected:
         x.print_diagnostic_details(os);
         return os << "\n";
     }
-};
+}; // class diagnostic_details
 
 namespace detail
 {
@@ -288,6 +288,6 @@ namespace detail
 
 using verbose_diagnostic_info = diagnostic_details;
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_DIAGNOSTICS_HPP_INCLUDED

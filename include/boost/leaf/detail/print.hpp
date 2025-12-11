@@ -153,8 +153,8 @@ namespace detail
             return print_impl<Enum>(os, prefix, delimiter, ": ", static_cast<typename std::underlying_type<Enum>::type>(enum_));
         }
     };
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_DETAIL_PRINT_HPP_INCLUDED

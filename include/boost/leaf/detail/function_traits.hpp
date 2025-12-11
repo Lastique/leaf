@@ -92,8 +92,8 @@ namespace detail
 
     template <class F>
     using fn_mp_args = typename function_traits<F>::mp_args;
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_DETAIL_FUNCTION_TRAITS_HPP_INCLUDED

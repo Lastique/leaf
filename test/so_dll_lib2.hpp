@@ -14,12 +14,8 @@
 #       define BOOST_LEAF_SO_DLL_TEST_LIB2_API __declspec(dllimport)
 #   endif
 #else
-#   define BOOST_LEAF_SO_DLL_TEST_LIB2_API BOOST_LEAF_SYMBOL_VISIBLE
+#   define BOOST_LEAF_SO_DLL_TEST_LIB2_API [[gnu::visibility("default")]]
 #endif
-
-namespace boost { namespace leaf {
-    template <class T> class result;
-} }
 
 BOOST_LEAF_SO_DLL_TEST_LIB2_API boost::leaf::result<void> hidden_result2();
 

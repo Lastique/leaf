@@ -44,9 +44,9 @@ namespace detail
     };
 
     thread_local unsigned current_error_id_storage::x;
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 ////////////////////////////////////////
 
@@ -87,8 +87,8 @@ namespace tls
     {
         return detail::ptr<T>::p;
     }
-}
+} // namespace tls
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_CONFIG_TLS_CPP11_HPP_INCLUDED

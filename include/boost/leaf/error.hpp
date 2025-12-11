@@ -62,7 +62,7 @@
 
 namespace boost { namespace leaf {
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_source_location
+struct e_source_location
 {
     char const * file;
     int line;
@@ -82,11 +82,9 @@ struct show_in_diagnostics<e_source_location>: std::false_type
 
 ////////////////////////////////////////
 
-class BOOST_LEAF_SYMBOL_VISIBLE error_id;
-
 namespace detail
 {
-    class BOOST_LEAF_SYMBOL_VISIBLE exception_base
+    class exception_base
     {
     public:
         virtual error_id get_error_id() const noexcept = 0;
@@ -104,7 +102,7 @@ namespace detail
 namespace detail
 {
     template <class E>
-    class BOOST_LEAF_SYMBOL_VISIBLE slot:
+    class slot:
         optional<E>
     {
         slot( slot const & ) = delete;
@@ -169,8 +167,8 @@ namespace detail
         using impl::load;
         using impl::has_value;
         using impl::value;
-    };
-}
+    }; // template slot
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -180,7 +178,7 @@ namespace detail
 {
     class preloaded_base;
 
-    class BOOST_LEAF_SYMBOL_VISIBLE dynamic_allocator:
+    class dynamic_allocator:
         capture_list
     {
         dynamic_allocator( dynamic_allocator const & ) = delete;
@@ -358,7 +356,7 @@ namespace detail
 
         using capture_list::unload;
         using capture_list::print;
-    };
+    }; // class dynamic_allocator
 
     template <>
     class slot<dynamic_allocator>
@@ -423,8 +421,8 @@ namespace detail
         {
         }
 #endif
-    };
-}
+    }; // slot specialization for dynamic_allocator
+} // namespace detail
 
 #endif // #if BOOST_LEAF_CFG_CAPTURE
 
@@ -506,7 +504,7 @@ namespace detail
                 (void) std::forward<F>(f)(p->load(err_id, T()));
         return 0;
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -551,7 +549,7 @@ namespace detail
 namespace detail
 {
 #if BOOST_LEAF_CFG_CAPTURE
-    class BOOST_LEAF_SYMBOL_VISIBLE preloaded_base
+    class preloaded_base
     {
     protected:
 
@@ -620,7 +618,7 @@ namespace detail
             return std::move(x);
         }
     };
-}
+} // namespace detail
 
 #if BOOST_LEAF_CFG_STD_SYSTEM_ERROR
 
@@ -666,7 +664,7 @@ namespace detail
         else
             return 0;
     }
-}
+} // namespace detail
 
 inline bool is_error_id( std::error_code const & ec ) noexcept
 {
@@ -684,7 +682,7 @@ namespace detail
     BOOST_LEAF_CONSTEXPR error_id make_error_id(int) noexcept;
 }
 
-class BOOST_LEAF_SYMBOL_VISIBLE error_id
+class error_id
 {
     friend error_id BOOST_LEAF_CONSTEXPR detail::make_error_id(int) noexcept;
 
@@ -790,7 +788,7 @@ public:
         BOOST_LEAF_ASSERT(value_);
         (void) load(e_source_location {file,line,function});
     }
-};
+}; // class error_id
 
 namespace detail
 {
@@ -829,6 +827,6 @@ struct is_result_type<R const>: is_result_type<R>
 {
 };
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_ERROR_HPP_INCLUDED

@@ -54,9 +54,9 @@ namespace tls
     // This function may not fail.
     template <class T>
     T * read_ptr() noexcept;
-}
+} // namespace tls
 
-} }
+} } // namespace boost::leaf
 
 #if defined(BOOST_LEAF_TLS_FREERTOS)
 #   include <boost/leaf/config/tls_freertos.hpp>

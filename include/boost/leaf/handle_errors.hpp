@@ -11,9 +11,6 @@
 
 namespace boost { namespace leaf {
 
-template <class T>
-class BOOST_LEAF_SYMBOL_VISIBLE result;
-
 ////////////////////////////////////////
 
 #ifndef BOOST_LEAF_NO_EXCEPTIONS
@@ -34,7 +31,7 @@ namespace detail
 
 ////////////////////////////////////////
 
-class BOOST_LEAF_SYMBOL_VISIBLE error_info
+class error_info
 {
     error_info & operator=( error_info const & ) = delete;
 
@@ -106,7 +103,7 @@ public:
         x.print_error_info(os);
         return os << '\n';
     }
-};
+}; // class error_info
 
 namespace detail
 {
@@ -292,7 +289,7 @@ namespace detail
         }
         return nullptr;
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -347,7 +344,7 @@ namespace detail
             return handler_argument_traits<Car>::check(tup, ei) && check_arguments<Tup, Cdr...>::check(tup, ei);
         }
     };
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -472,7 +469,7 @@ namespace detail
             std::forward<Car>(car),
             std::forward<Cdr>(cdr)...);
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -610,7 +607,7 @@ namespace detail
                 } );
         }
     }
-}
+} // namespace detail
 
 template <class TryBlock, class... H>
 inline
@@ -804,7 +801,7 @@ namespace detail
 #endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
         }
     };
-}
+} // namespace detail
 
 template <class TryBlock>
 inline
@@ -816,7 +813,7 @@ try_capture_all( TryBlock && try_block ) noexcept
 
 #endif // #if BOOST_LEAF_CFG_CAPTURE
 
-} }
+} } // namespace boost::leaf
 
 // Boost Exception Integration
 
@@ -876,8 +873,8 @@ namespace detail
     template <class Tag, class T> struct handler_argument_traits<boost::error_info<Tag, T> const *>: handler_argument_traits_require_by_value<boost::error_info<Tag, T>> { };
     template <class Tag, class T> struct handler_argument_traits<boost::error_info<Tag, T> &>: handler_argument_traits_require_by_value<boost::error_info<Tag, T>> { };
     template <class Tag, class T> struct handler_argument_traits<boost::error_info<Tag, T> *>: handler_argument_traits_require_by_value<boost::error_info<Tag, T>> { };
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_HANDLE_ERRORS_HPP_INCLUDED

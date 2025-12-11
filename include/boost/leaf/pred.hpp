@@ -46,7 +46,7 @@ namespace detail
     {
         return cmp_value_pack(e, car) || cmp_value_pack(e, cdr...);
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -291,6 +291,6 @@ struct is_predicate<catch_<Ex...>>: std::true_type
 
 #endif // #ifndef BOOST_LEAF_NO_EXCEPTIONS
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_PRED_HPP_INCLUDED

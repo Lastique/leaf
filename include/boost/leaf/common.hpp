@@ -28,18 +28,18 @@
 
 namespace boost { namespace leaf {
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_api_function { char const * value; };
+struct e_api_function { char const * value; };
 
 #if BOOST_LEAF_CFG_STD_STRING
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_file_name
+struct e_file_name
 {
     std::string value;
 };
 
 #else
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_file_name
+struct e_file_name
 {
     char const * value = "<unavailable>";
     BOOST_LEAF_CONSTEXPR explicit e_file_name( char const * ) { }
@@ -47,7 +47,7 @@ struct BOOST_LEAF_SYMBOL_VISIBLE e_file_name
 
 #endif
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_errno
+struct e_errno
 {
     int value;
 
@@ -60,9 +60,9 @@ struct BOOST_LEAF_SYMBOL_VISIBLE e_errno
     }
 };
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_type_info_name { char const * value; };
+struct e_type_info_name { char const * value; };
 
-struct BOOST_LEAF_SYMBOL_VISIBLE e_at_line { int value; };
+struct e_at_line { int value; };
 
 namespace windows
 {
@@ -106,8 +106,8 @@ namespace windows
         }
 #endif // #if BOOST_LEAF_CFG_WIN32
     };
-}
+} // namespace windows
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_COMMON_HPP_INCLUDED

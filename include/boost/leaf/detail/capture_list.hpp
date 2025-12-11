@@ -14,8 +14,6 @@
 
 namespace boost { namespace leaf {
 
-class error_id;
-
 namespace detail
 {
 
@@ -112,11 +110,11 @@ namespace detail
             (void) to_print;
 #endif
         }
-    };
+    }; // class capture_list
 
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 #endif // #if BOOST_LEAF_CFG_CAPTURE
 

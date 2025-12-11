@@ -172,10 +172,10 @@ namespace detail
             reset();
             return tmp;
         }
-    };
+    }; // template optional
 
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_DETAIL_OPTIONAL_HPP_INCLUDED

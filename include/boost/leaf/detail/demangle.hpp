@@ -111,7 +111,7 @@ namespace detail
     {
         return cpp11_suffix<S1, S2, S1 - 2, S2 - 2>::check(str, suffix) ? S1 - S2 : 0;
     }
-}
+} // namespace detail
 
 namespace n
 {
@@ -205,7 +205,7 @@ namespace n
         int const p = sizeof(char[1 + !!s02 * (p22 + p23 + p24)]) - 1; // p is not zero, we've static asserted the hell out of it
         return { BOOST_LEAF_PRETTY_FUNCTION + p, s02 - p };
     }
-}
+} // namespace n
 
 using parsed = n::r;
 
@@ -215,7 +215,7 @@ parsed parse()
     return n::p<T>();
 }
 
-} }
+} } // namespace boost::leaf
 
 ////////////////////////////////////////
 
@@ -246,8 +246,8 @@ namespace detail
 #endif // #if defined(BOOST_LEAF_CFG_DIAGNOSTICS) && defined(BOOST_LEAF_HAS_CXXABI_H)
         return os << mangled_name;
     }
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_DETAIL_DEMANGLE_HPP_INCLUDED

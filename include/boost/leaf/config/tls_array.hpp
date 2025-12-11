@@ -107,9 +107,9 @@ namespace detail
 
     template <class T>
     BOOST_LEAF_CFG_TLS_INDEX_TYPE const reserve_tls_index<T>::idx = tls_index<T>::idx = index_counter<>::next<T>();
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 ////////////////////////////////////////
 
@@ -161,8 +161,8 @@ namespace tls
         --tls_idx;
         return reinterpret_cast<T *>(read_void_ptr(tls_idx));
     }
-}
+} // namespace tls
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_CONFIG_TLS_ARRAY_HPP_INCLUDED

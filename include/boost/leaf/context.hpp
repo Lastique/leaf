@@ -130,7 +130,7 @@ namespace detail
     {
         static_assert(sizeof(E) == 0, "Error handlers must take this type by value");
     };
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -171,7 +171,7 @@ namespace detail
         else
             return find_in_tuple<T, I+1, Tp...>(t);
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -227,7 +227,7 @@ namespace detail
     {
         tuple_for_each<std::tuple_size<Tup>::value, Tup>::print(os, tup, to_print, prefix);
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -262,7 +262,7 @@ namespace detail
 
     template <class... E>
     using deduce_e_tuple = typename deduce_e_tuple_impl<typename deduce_e_type_list<leaf_detail_mp11::mp_list<E...>>::type>::type;
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -400,7 +400,7 @@ public:
     {
         return raii_deactivator(ctx);
     }
-};
+}; // template context
 
 ////////////////////////////////////////
 
@@ -441,7 +441,7 @@ namespace detail
     {
         using type = deduce_context<leaf_detail_mp11::mp_append<typename fn_mp_args_fwd<H>::type...>>;
     };
-}
+} // namespace detail
 
 template <class... H>
 using context_type_from_handlers = typename detail::context_type_from_handlers_impl<H...>::type;
@@ -460,6 +460,6 @@ BOOST_LEAF_CONSTEXPR inline context_type_from_handlers<H...> make_context( H && 
     return { };
 }
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_CONTEXT_HPP_INCLUDED

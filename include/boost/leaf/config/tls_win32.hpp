@@ -211,7 +211,7 @@ namespace detail
         {
             return error_id_storage_;
         }
-    };
+    }; // class slot_map
 
     class module_state
     {
@@ -307,7 +307,7 @@ namespace detail
                 }
             }
         }
-    };
+    }; // class module_state
 
     template<int = 0>
     struct module
@@ -344,9 +344,9 @@ namespace detail
 #elif defined(__GNUC__)
     extern "C" __attribute__((used)) PIMAGE_TLS_CALLBACK boost_leaf_tls_callback __attribute__((section(".CRT$XLB"))) = tls_callback;
 #endif
-}
+} // namespace detail
 
-} }
+} } // namespace boost::leaf
 
 ////////////////////////////////////////
 
@@ -409,8 +409,8 @@ namespace tls
         BOOST_LEAF_ASSERT(GetLastError() == ERROR_SUCCESS);
         return static_cast<T *>(value);
     }
-}
+} // namespace tls
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_CONFIG_TLS_WIN32_HPP_INCLUDED

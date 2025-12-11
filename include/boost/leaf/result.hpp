@@ -14,8 +14,6 @@
 
 namespace boost { namespace leaf {
 
-namespace detail { class dynamic_allocator; }
-
 ////////////////////////////////////////
 
 class bad_result:
@@ -59,7 +57,7 @@ namespace detail
     {
         result_value_printer<T>::print(s, x);
     }
-}
+} // namespace detail
 
 ////////////////////////////////////////
 
@@ -157,20 +155,19 @@ namespace detail
             BOOST_LEAF_ASSERT(kind() == err_id_zero || kind() == err_id || kind() == err_id_capture_list);
             return make_error_id(int((state_&~3)|1));
         }
-    };
-}
+    }; // class result_discriminant
+} // namespace detail
 
 ////////////////////////////////////////
 
 template <class T>
-class BOOST_LEAF_SYMBOL_VISIBLE BOOST_LEAF_ATTRIBUTE_NODISCARD result
+class BOOST_LEAF_ATTRIBUTE_NODISCARD result
 {
     template <class U>
     friend class result;
 
-    friend class detail::dynamic_allocator;
-
 #if BOOST_LEAF_CFG_CAPTURE
+    friend class detail::dynamic_allocator;
     using capture_list = detail::capture_list;
 #endif
 
@@ -606,7 +603,7 @@ public:
             r.print_error_result(os);
         return os;
     }
-};
+}; // template result
 
 ////////////////////////////////////////
 
@@ -616,19 +613,19 @@ namespace detail
 }
 
 template <>
-class BOOST_LEAF_SYMBOL_VISIBLE BOOST_LEAF_ATTRIBUTE_NODISCARD result<void>:
+class BOOST_LEAF_ATTRIBUTE_NODISCARD result<void>:
     result<detail::void_>
 {
     template <class U>
     friend class result;
-
-    friend class detail::dynamic_allocator;
 
     using result_discriminant = detail::result_discriminant;
     using void_ = detail::void_;
     using base = result<void_>;
 
 #if BOOST_LEAF_CFG_CAPTURE
+    friend class detail::dynamic_allocator;
+
     result( int err_id, detail::capture_list && cap ) noexcept:
         base(err_id, std::move(cap))
     {
@@ -714,7 +711,7 @@ public:
     using base::error;
     using base::load;
     using base::unload;
-};
+}; // result specialization for void
 
 ////////////////////////////////////////
 
@@ -726,6 +723,6 @@ struct is_result_type<result<T>>: std::true_type
 {
 };
 
-} }
+} } // namespace boost::leaf
 
 #endif // #ifndef BOOST_LEAF_RESULT_HPP_INCLUDED

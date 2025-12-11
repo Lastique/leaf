@@ -42,7 +42,7 @@ to_variant( TryBlock && try_block )
         } );
 }
 
-} }
+} } // namespace boost::leaf
 
 #endif // #if __cplusplus >= 201703L
 
